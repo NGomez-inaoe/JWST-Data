@@ -38,9 +38,9 @@ jades_EW_Hb_data = []
 mast_EW_O_data = []
 jades_EW_O_data = []
 
-lamb_ini = 3000 * u.AA
+lamb_ini = 2000 * u.AA
 #For this object we also exclude final regions:
-lamb_end = 10 * u.AA
+lamb_end = 2 * u.AA
 
 def main():
 
@@ -50,7 +50,7 @@ def main():
       
 
     #Save EW estimate
-    n = 33
+    n = 58
     save_EW(n)
 
     
@@ -319,7 +319,7 @@ def compare_spectrum(mast_file, jades_file, z, ID, whichSpectrum):
     plt.setp(legend.get_texts(),fontsize='14')
     plt.tick_params(axis='x',labelsize=10)
     plt.tick_params(axis='y',labelsize=10)
-    #plt.show()
+    
     #plt.close()
 
 
@@ -334,7 +334,7 @@ def save_spectrum(ID):
             z = z_array[i]
             compare_spectrum(mast_file, jades_file, z, ID, 'Ori')
             plt.savefig(f'{plots_folder}/EW-{ID}.pdf')
-
+            plt.show()
 
 main()
 

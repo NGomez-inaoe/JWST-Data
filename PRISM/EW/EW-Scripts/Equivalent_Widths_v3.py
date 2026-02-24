@@ -40,7 +40,7 @@ jades_EW_O_data = []
 
 lamb_ini = 2000 * u.AA
 #For this object we also exclude final regions:
-lamb_end = 1 * u.AA
+lamb_end = 2 * u.AA
 
 def main():
 
@@ -50,7 +50,7 @@ def main():
       
 
     #Save EW estimate
-    n = 23
+    n = 63
     save_EW(n)
 
     
