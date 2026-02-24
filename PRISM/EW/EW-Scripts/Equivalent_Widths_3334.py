@@ -66,7 +66,6 @@ def main():
 
     ID = ID_data[0]
     EWD = pd.DataFrame(EW_data)
-    
     EWD.to_csv(f'{output_folder}/EW_output_{ID}.tsv', sep="\t", index=False)
     
     #Save spectrum with fitted continuum
@@ -316,8 +315,8 @@ def compare_spectrum(mast_file, jades_file, z, ID, whichSpectrum):
     plt.setp(legend.get_texts(),fontsize='14')
     plt.tick_params(axis='x',labelsize=10)
     plt.tick_params(axis='y',labelsize=10)
-    plt.show()
-    #plt.close()
+    #plt.show()
+    
 
 
 
@@ -331,6 +330,7 @@ def save_spectrum(ID):
             z = z_array[i]
             compare_spectrum(mast_file, jades_file, z, ID, 'Ori')
             plt.savefig(f'{plots_folder}/EW-{ID}.pdf')
+            
 
 
 main()

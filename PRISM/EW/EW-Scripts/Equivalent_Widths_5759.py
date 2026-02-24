@@ -38,9 +38,7 @@ jades_EW_Hb_data = []
 mast_EW_O_data = []
 jades_EW_O_data = []
 
-lamb_ini = 1500 * u.AA
-#For this object we also exclude final regions:
-lamb_end = 1 * u.AA
+lamb_ini = 2000 * u.AA
 
 def main():
 
@@ -50,7 +48,7 @@ def main():
       
 
     #Save EW estimate
-    n = 31
+    n = 10
     save_EW(n)
 
     
@@ -105,9 +103,9 @@ def compare_EW(mast_file, jades_file, z, printValue=False):
                 #Initial region to exlude
             lamb = lambda_rest_Angstrom
             Lower_lamb_region = SpectralRegion(lamb[0], lamb_ini)
-            Last_lamb_region = SpectralRegion(lamb[-1] - lamb_end, lamb[-1])
+
                 #Compute continuum by fitting
-            spec_continuum_fitted = fit_generic_continuum(mast_spectrum, exclude_regions=[Lower_lamb_region, Last_lamb_region])(mast_spectrum.spectral_axis)
+            spec_continuum_fitted = fit_generic_continuum(mast_spectrum, exclude_regions=Lower_lamb_region)(mast_spectrum.spectral_axis)
                 # Normalize the spectrum by its continuum
             mast_normalized_continuum_spec = mast_spectrum / spec_continuum_fitted
 
@@ -146,9 +144,9 @@ def compare_EW(mast_file, jades_file, z, printValue=False):
 
             lamb = lambda_rest_Angstrom
             Lower_lamb_region = SpectralRegion(lamb[0], lamb_ini)
-            Last_lamb_region = SpectralRegion(lamb[-1] - lamb_end, lamb[-1])
-                #Compute continuum by fitting
-            spec_continuum_fitted = fit_generic_continuum(jades_spectrum, exclude_regions=[Lower_lamb_region, Last_lamb_region])(jades_spectrum.spectral_axis)
+
+            # Normalize the spectrum by its continuum
+            spec_continuum_fitted = fit_generic_continuum(jades_spectrum, exclude_regions=[Lower_lamb_region] )(jades_spectrum.spectral_axis)
             jades_normalized_continuum_spec = jades_spectrum / spec_continuum_fitted
 
         #Define Spectral Regions for the emission lines
@@ -240,8 +238,7 @@ def compare_spectrum(mast_file, jades_file, z, ID, whichSpectrum):
             # Normalize the spectrum by its continuum
             lamb=mast_lambda_rest_Angstrom
             Lower_lamb_region = SpectralRegion(lamb[0], lamb_ini)
-            Last_lamb_region = SpectralRegion(lamb[-1] - lamb_end, lamb[-1])
-            mast_spec_continuum_fitted = fit_generic_continuum(mast_spectrum, exclude_regions=[Lower_lamb_region, Last_lamb_region])(mast_spectrum.spectral_axis)
+            mast_spec_continuum_fitted = fit_generic_continuum(mast_spectrum, exclude_regions=Lower_lamb_region)(mast_spectrum.spectral_axis)
             mast_normalized_continuum_spec = mast_spectrum / mast_spec_continuum_fitted
 
 
@@ -268,8 +265,7 @@ def compare_spectrum(mast_file, jades_file, z, ID, whichSpectrum):
             # Normalize the spectrum by its continuum
             lamb=jades_lambda_rest_Angstrom
             Lower_lamb_region = SpectralRegion(lamb[0], lamb_ini)
-            Last_lamb_region = SpectralRegion(lamb[-1] - lamb_end, lamb[-1])
-            jades_spec_continuum_fitted = fit_generic_continuum(jades_spectrum, exclude_regions=[Lower_lamb_region, Last_lamb_region])(jades_spectrum.spectral_axis)
+            jades_spec_continuum_fitted = fit_generic_continuum(jades_spectrum, exclude_regions=Lower_lamb_region)(jades_spectrum.spectral_axis)
             jades_normalized_continuum_spec = jades_spectrum / jades_spec_continuum_fitted
 
 

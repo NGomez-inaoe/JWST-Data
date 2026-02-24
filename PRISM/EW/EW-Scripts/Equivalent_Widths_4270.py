@@ -314,8 +314,8 @@ def compare_spectrum(mast_file, jades_file, z, ID, whichSpectrum):
     plt.setp(legend.get_texts(),fontsize='14')
     plt.tick_params(axis='x',labelsize=10)
     plt.tick_params(axis='y',labelsize=10)
-    plt.show()
-    #plt.close()
+    
+    
 
 
 
@@ -329,6 +329,7 @@ def save_spectrum(ID):
             z = z_array[i]
             compare_spectrum(mast_file, jades_file, z, ID, 'Ori')
             plt.savefig(f'{plots_folder}/EW-{ID}.pdf')
+            #plt.show()
 
 
 main()

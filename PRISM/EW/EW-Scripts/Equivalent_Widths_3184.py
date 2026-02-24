@@ -13,9 +13,11 @@ import warnings
 
 
 #Define source path where the files are
-source=Path("/home/nicolas/Documents/Research/PhD/JWST-Data/PRISM/Spectra1D/")
-mast_folder=source / "MAST"
-jades_folder=source / "JADES"
+source=Path("/home/nicolas/Documents/Research/PhD/JWST-Data/PRISM/")
+mast_folder=source / "Spectra1D/MAST"
+jades_folder=source / "Spectra1D/JADES"
+output_folder=source / "EW/EW-Data-Output"
+plots_folder=source / "EW/EW-Plots"
 
 df = pd.read_csv("short-table.tsv", sep='\t')
 
@@ -63,7 +65,7 @@ def main():
 
     ID = ID_data[0]
     EWD = pd.DataFrame(EW_data)
-    EWD.to_csv(f"../EW-Data-Output/EW_output_{ID}.tsv", sep="\t", index=False)
+    EWD.to_csv(f'{output_folder}/EW_output_{ID}.tsv', sep="\t", index=False)
     
     #Save spectrum with fitted continuum
     save_spectrum(ID)
@@ -312,8 +314,8 @@ def compare_spectrum(mast_file, jades_file, z, ID, whichSpectrum):
     plt.setp(legend.get_texts(),fontsize='14')
     plt.tick_params(axis='x',labelsize=10)
     plt.tick_params(axis='y',labelsize=10)
-    plt.show()
-    #plt.close()
+
+    
 
 
 
@@ -326,7 +328,8 @@ def save_spectrum(ID):
             mast_file = mast_folder / MAST_files[i]
             z = z_array[i]
             compare_spectrum(mast_file, jades_file, z, ID, 'Ori')
-            plt.savefig(f'../EW-Plots/EW-{ID}.pdf')
+            plt.savefig(f'{plots_folder}/EW-{ID}.pdf')
+            #plt.show()
 
 
 main()
