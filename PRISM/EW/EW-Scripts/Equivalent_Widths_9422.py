@@ -38,7 +38,7 @@ jades_EW_Hb_data = []
 mast_EW_O_data = []
 jades_EW_O_data = []
 
-lamb_ini = 2000 * u.AA
+lamb_ini = 1400 * u.AA
 #For this object we also exclude final regions:
 lamb_end = 1 * u.AA
 

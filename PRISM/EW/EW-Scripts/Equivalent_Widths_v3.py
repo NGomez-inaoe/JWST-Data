@@ -40,7 +40,7 @@ jades_EW_O_data = []
 
 lamb_ini = 2000 * u.AA
 #For this object we also exclude final regions:
-lamb_end = 2 * u.AA
+lamb_end = 1 * u.AA
 
 def main():
 
@@ -50,7 +50,7 @@ def main():
       
 
     #Save EW estimate
-    n = 63
+    n = 0
     save_EW(n)
 
     
@@ -215,7 +215,7 @@ def save_EW(i):
 
 
 
-def compare_spectrum(mast_file, jades_file, z, ID, whichSpectrum):
+def compare_spectrum(mast_file, jades_file, z, ID):
 
     with fits.open(mast_file) as m_f:
         #Extract data from the file
@@ -241,7 +241,8 @@ def compare_spectrum(mast_file, jades_file, z, ID, whichSpectrum):
             lamb=mast_lambda_rest_Angstrom
             Lower_lamb_region = SpectralRegion(lamb[0], lamb_ini)
             Last_lamb_region = SpectralRegion(lamb[-1] - lamb_end, lamb[-1])
-            mast_spec_continuum_fitted = fit_generic_continuum(mast_spectrum, exclude_regions=[Lower_lamb_region, Last_lamb_region])(mast_spectrum.spectral_axis)
+            lines_regions = SpectralRegion(4740 * u.AA, 6780 * u.AA )
+            mast_spec_continuum_fitted = fit_generic_continuum(mast_spectrum, exclude_regions=[Lower_lamb_region, lines_regions, Last_lamb_region])(mast_spectrum.spectral_axis)
             mast_normalized_continuum_spec = mast_spectrum / mast_spec_continuum_fitted
 
 
@@ -269,7 +270,8 @@ def compare_spectrum(mast_file, jades_file, z, ID, whichSpectrum):
             lamb=jades_lambda_rest_Angstrom
             Lower_lamb_region = SpectralRegion(lamb[0], lamb_ini)
             Last_lamb_region = SpectralRegion(lamb[-1] - lamb_end, lamb[-1])
-            jades_spec_continuum_fitted = fit_generic_continuum(jades_spectrum, exclude_regions=[Lower_lamb_region, Last_lamb_region])(jades_spectrum.spectral_axis)
+            lines_regions = SpectralRegion(4740 * u.AA, 6780 * u.AA )
+            jades_spec_continuum_fitted = fit_generic_continuum(jades_spectrum, exclude_regions=[Lower_lamb_region, lines_regions, Last_lamb_region])(jades_spectrum.spectral_axis)
             jades_normalized_continuum_spec = jades_spectrum / jades_spec_continuum_fitted
 
 
@@ -278,34 +280,13 @@ def compare_spectrum(mast_file, jades_file, z, ID, whichSpectrum):
     plt.figure()
 
 
-        #Original
-    if whichSpectrum == "Ori":
-        plotSpectrum_1 = mast_spectrum
-        plotSpectrum_2 = jades_spectrum
-
-        #Normalized Continuum
-    elif whichSpectrum == "NC":
-        plotSpectrum_1 = mast_normalized_continuum_spec
-        plotSpectrum_2 = jades_normalized_continuum_spec
-
-        #H alpha
-    elif whichSpectrum == "Ha":
-        plotSpectrum_1 = mast_normalized_continuum_spec
-        plotSpectrum_2 = jades_normalized_continuum_spec
-        plt.xlim(6450 , 6650)
-
-        #Hbeta
-    elif whichSpectrum == "Hb":
-        plotSpectrum_1 = mast_normalized_continuum_spec
-        plotSpectrum_2 = jades_normalized_continuum_spec
-        plt.xlim(4840 , 4880)
 
 
     ##plots
-
+        #Both
     plt.rcParams["figure.figsize"] = (12, 9)
-    plt.step(plotSpectrum_1.spectral_axis, plotSpectrum_1.flux, label='MAST', color='b')
-    plt.step(plotSpectrum_2.spectral_axis, plotSpectrum_2.flux, label='JADES', color='g')
+    plt.step(mast_spectrum.spectral_axis, mast_spectrum.flux, label='MAST', color='b')
+    plt.step(jades_spectrum.spectral_axis, jades_spectrum.flux, label='JADES', color='g')
 
     plt.step(mast_lambda_rest_Angstrom, mast_spec_continuum_fitted, label='MAST NC', color='cyan')
     plt.step(jades_lambda_rest_Angstrom, jades_spec_continuum_fitted, label='JADES NC',  color='lightgreen')
@@ -319,9 +300,48 @@ def compare_spectrum(mast_file, jades_file, z, ID, whichSpectrum):
     plt.setp(legend.get_texts(),fontsize='14')
     plt.tick_params(axis='x',labelsize=10)
     plt.tick_params(axis='y',labelsize=10)
+    plt.savefig(f'{plots_folder}/EW-{ID}-B.pdf')
+    plt.close()
     
-    #plt.close()
+        #Only JADES
+    plt.rcParams["figure.figsize"] = (12, 9)
+    
+    plt.step(jades_spectrum.spectral_axis, jades_spectrum.flux, label='JADES', color='g')
 
+    #plt.step(mast_lambda_rest_Angstrom, mast_spec_continuum_fitted, label='MAST NC', color='cyan')
+    plt.step(jades_lambda_rest_Angstrom, jades_spec_continuum_fitted, label='JADES NC',  color='lightgreen')
+
+
+    #plt.step(normalized_continuum_spec.wavelength, normalized_continuum_spec.flux)
+    plt.ylabel(r' Flux [ergs s$^{-1}$ cm$^{-2}$ $\AA^{-1}$]', fontsize=15)
+    plt.xlabel(r' $\lambda_{rest}$ [$\AA$]', fontsize=15)
+    plt.title(f'ID={ID}, z={z}',fontsize=14)
+    legend=plt.legend(loc='best',labelspacing=0.1)
+    plt.setp(legend.get_texts(),fontsize='14')
+    plt.tick_params(axis='x',labelsize=10)
+    plt.tick_params(axis='y',labelsize=10)
+    plt.savefig(f'{plots_folder}/EW-{ID}-J.pdf')
+    plt.close()
+        
+        
+        #Only MAST
+    plt.rcParams["figure.figsize"] = (12, 9)
+    
+    plt.step(mast_spectrum.spectral_axis, mast_spectrum.flux, label='MAST', color='b')
+    plt.step(mast_lambda_rest_Angstrom, mast_spec_continuum_fitted, label='MAST NC', color='cyan')
+
+    
+    plt.ylabel(r' Flux [ergs s$^{-1}$ cm$^{-2}$ $\AA^{-1}$]', fontsize=15)
+    plt.xlabel(r' $\lambda_{rest}$ [$\AA$]', fontsize=15)
+    plt.title(f'ID={ID}, z={z}',fontsize=14)
+    legend=plt.legend(loc='best',labelspacing=0.1)
+    plt.setp(legend.get_texts(),fontsize='14')
+    plt.tick_params(axis='x',labelsize=10)
+    plt.tick_params(axis='y',labelsize=10)
+    plt.savefig(f'{plots_folder}/EW-{ID}-M.pdf')
+    plt.show()
+    plt.close()
+    
 
 
 def save_spectrum(ID):
@@ -332,9 +352,8 @@ def save_spectrum(ID):
             jades_file = jades_folder / JADES_files[i]
             mast_file = mast_folder / MAST_files[i]
             z = z_array[i]
-            compare_spectrum(mast_file, jades_file, z, ID, 'Ori')
-            plt.savefig(f'{plots_folder}/EW-{ID}.pdf')
-            plt.show()
+            compare_spectrum(mast_file, jades_file, z, ID)
+            
 
 main()
 
