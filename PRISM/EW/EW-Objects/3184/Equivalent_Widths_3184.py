@@ -56,11 +56,11 @@ jades_EW_dO_data=[]
 #Define Spectral Regions for the emission lines: this is the region
 #we edit
 #//////////////////////////////////////
-indx=52
+indx=0
 
-Ha_ini, Ha_end = 6510 *u.AA, 6636 *u.AA
-Hb_ini, Hb_end = 4782 *u.AA, 4903 *u.AA
-O_ini, O_end = 4919 *u.AA, 5088 *u.AA
+Ha_ini, Ha_end = 6471 *u.AA, 6622 *u.AA
+Hb_ini, Hb_end = 4789 *u.AA, 4887 *u.AA
+O_ini, O_end = 4910 *u.AA, 5073 *u.AA
 #//////////////////////////////////////
 
 
@@ -94,7 +94,7 @@ def main():
     EWD = pd.DataFrame(EW_data)
     folder=objects_folder / f'{ID}'
     EWD.to_csv(f'{folder}/EW_output_{ID}.tsv', sep="\t", index=False)
-    EWD.to_csv(f'{output_folder}/EW_output_v5.tsv', sep="\t", index=False, mode='a', header=False)
+    EWD.to_csv(f'{output_folder}/EW_output_v5.tsv', sep="\t", index=False, mode='a', header=True)
 
 
     print(f'Equitalent Widths for obj {ID}, saved!')
@@ -301,15 +301,14 @@ def plot_spectra(mast_file, jades_file, z, ID):
         specdata=m_f[1].data
 
         #Compute rest wavelength
-        mast_lambda_obs = specdata['WAVELENGTH'] * 1e-6 / 1e-10 #convert from um to AA.
-        lambda_rest = mast_lambda_obs / (1.+float(z))
+        lambda_obs = specdata['WAVELENGTH'] * 1e-6 / 1e-10 #convert from um to AA.
+        lambda_rest = lambda_obs / (1.+float(z))
         lambda_rest_Angstrom = lambda_rest * u.AA #u.AA just includes the units
 
 
         #Extract flux in Jy from .fits
         flux = specdata['FLUX']
         flux_Jy = flux * u.Jy
-
 
         #Uncertainty of the flux
         flux_err = specdata['FLUX_ERROR']
@@ -323,13 +322,11 @@ def plot_spectra(mast_file, jades_file, z, ID):
 
 
         #Remove NaN values
-        mast_mask = np.isfinite(spectrum.flux.value)
-        mast_spectrum = Spectrum(spectral_axis=lambda_rest_Angstrom[mast_mask],
-                              flux=flux_Jy[mast_mask],
-                              uncertainty=flux_uncertainty[mast_mask])
-
-
-
+        mask = np.isfinite(spectrum.flux.value)
+        mast_spectrum = Spectrum(spectral_axis=lambda_rest_Angstrom[mask],
+                              flux=flux_Jy[mask],
+                              uncertainty=flux_uncertainty[mask])
+        mast_lambda = mast_spectrum.spectral_axis #This one is for the plot
 
         with warnings.catch_warnings(): #ignore warnings
             warnings.simplefilter('ignore')
@@ -364,16 +361,16 @@ def plot_spectra(mast_file, jades_file, z, ID):
         specdata=j_f[1].data
 
         #Compute rest wavelength
-        jades_lambda_obs = specdata['WAVELENGTH'] * 1e-6 / 1e-10 #convert from um to AA.
-        lambda_rest = jades_lambda_obs / (1.+float(z))
+        lambda_obs = specdata['WAVELENGTH'] * 1e-6 / 1e-10 #convert from um to AA.
+        lambda_rest = lambda_obs / (1.+float(z))
         lambda_rest_Angstrom = lambda_rest * u.AA #u.AA just includes the units
 
         #Extract and convert flux from working units to Jy
         flux = specdata['FLUX'] #flux in erg cm-2 s-1 AA-1'
-        flux_Jy = flux * jades_lambda_obs**2 / 2.99792458e-5 *u.Jy
+        flux_Jy = flux * lambda_obs**2 / 2.99792458e-5 *u.Jy
 
         #Uncertainty of the flux
-        flux_err = specdata['FLUX_ERR'] * jades_lambda_obs**2 / 2.99792458e-5
+        flux_err = specdata['FLUX_ERR'] * lambda_obs**2 / 2.99792458e-5
         flux_err_Jy = flux_err * u.Jy
         flux_uncertainty = StdDevUncertainty(flux_err_Jy)
 
@@ -466,8 +463,8 @@ def plot_spectra(mast_file, jades_file, z, ID):
 
     sns.set_palette([
         COSMO_COLORS["deep_blue"],
-        "black",
         COSMO_COLORS["warm_gold"],
+        "black",
         COSMO_COLORS["cool_gray"],
         COSMO_COLORS["dark_teal"],
         COSMO_COLORS["soft_crimson"],
@@ -476,7 +473,6 @@ def plot_spectra(mast_file, jades_file, z, ID):
 
 
     #///////////////////////////// Figures ////////////////////
-    """
     plt.figure()
 
     #Plot for Ha region, only MAST
@@ -496,7 +492,7 @@ def plot_spectra(mast_file, jades_file, z, ID):
     plt.setp(legend.get_texts());
     plt.savefig(f'{output_folder}/EW_{ID}_Ha_mast.pdf')
 
-    #plt.show()
+    plt.show()
     plt.close()
 
 
@@ -517,31 +513,68 @@ def plot_spectra(mast_file, jades_file, z, ID):
     plt.xlim(Hb_ini.value - 500 , O_end.value + 500 )
     plt.ylim(bottom=-1e-7)
     plt.savefig(f'{output_folder}/EW_{ID}_Hb_mast.pdf')
-    #plt.show()
+    plt.show()
     plt.close()
 
-    """
-    #Plot for all the spectrum, both sources
+
+    #Plot for Ha region, both
     plt.figure()
     plt.rcParams["figure.figsize"] = (10, 10)
-    plt.ylabel(r' Flux [$\mathrm{erg~s^{-1} cm^{-2} \AA^{-1} }$]')
+    plt.ylabel(r' Flux [$\mathrm{Jy}$]')
     plt.xlabel(r' $\lambda_{rest}$ [$\AA$]')
     plt.title(f'ID={ID}, z={z}')
     plt.tick_params(axis='x')
     plt.tick_params(axis='y')
     plt.minorticks_on()
-    plt.grid(False)
 
-    jades_flux_ergs = jades_spectrum.flux * 2.99792458e-5 / jades_lambda_obs[mask]**2
-    mast_flux_ergs = mast_spectrum.flux * 2.99792458e-5 / mast_lambda_obs[mast_mask]**2
+    plt.step(mast_spectrum.spectral_axis, mast_spectrum.flux, label=r'MAST $H\alpha$')
+    plt.step(mast_lambda, mast_Ha_continuum_fit, label='Continuum Fit (MAST)')
+    plt.step(jades_spectrum.spectral_axis, jades_spectrum.flux, label='JADES')
+    plt.step(jades_lambda, jades_Ha_continuum_fit, label='Continuum Fit (JADES)')
+    legend=plt.legend(loc='best',labelspacing=0.1)
+    plt.setp(legend.get_texts())
+    plt.xlim(Ha_ini.value - 500 , Ha_end.value + 350 )
+    plt.ylim(bottom=-1e-7)
+    plt.savefig(f'{output_folder}/EW_{ID}_Ha_both.pdf')
+    #plt.show()
+    plt.close()
 
-    plt.step(mast_spectrum.spectral_axis, mast_flux_ergs, label='MAST', color='black')
-    plt.step(jades_spectrum.spectral_axis, jades_flux_ergs, label='JADES', color=COSMO_COLORS['warm_gold'])
+    #Plot for Hb region, both
+    plt.figure()
+    plt.rcParams["figure.figsize"] = (10, 10)
+    plt.ylabel(r' Flux [$\mathrm{Jy}$]')
+    plt.xlabel(r' $\lambda_{rest}$ [$\AA$]')
+    plt.title(f'ID={ID}, z={z}')
+    plt.tick_params(axis='x')
+    plt.tick_params(axis='y')
+    plt.minorticks_on()
 
+    plt.step(mast_spectrum.spectral_axis, mast_spectrum.flux, label=r'MAST $H\beta$')
+    plt.step(mast_lambda, mast_Hb_continuum_fit, label='Continuum Fit (MAST)')
+    plt.step(jades_spectrum.spectral_axis, jades_spectrum.flux, label='JADES')
+    plt.step(jades_lambda, jades_Hb_continuum_fit, label='Continuum Fit (JADES)')
+    legend=plt.legend(loc='best',labelspacing=0.1)
+    plt.setp(legend.get_texts(),fontsize='14')
+    plt.xlim(Hb_ini.value - 500 , O_end.value + 500 )
+    plt.ylim(bottom=-1e-7)
+    plt.savefig(f'{output_folder}/EW_{ID}_Hb_both.pdf')
+
+
+    #Plot all the spectrum
+    plt.figure()
+    plt.rcParams["figure.figsize"] = (10, 10)
+    plt.ylabel(r' Flux [$\mathrm{Jy}$]')
+    plt.xlabel(r' $\lambda_{rest}$ [$\AA$]')
+    plt.title(f'ID={ID}, z={z}')
+    plt.tick_params(axis='x')
+    plt.tick_params(axis='y')
+    plt.minorticks_on()
+
+    plt.step(mast_spectrum.spectral_axis, mast_spectrum.flux, label=r'MAST $H\beta$')
+    plt.step(jades_spectrum.spectral_axis, jades_spectrum.flux, label='JADES')
     legend=plt.legend(loc='best',labelspacing=0.1)
     plt.setp(legend.get_texts(),fontsize='14')
     plt.savefig(f'{output_folder}/EW_{ID}_All.pdf')
-    plt.show()
 
     #///////////////////////////// End of Figures ////////////////////
 
