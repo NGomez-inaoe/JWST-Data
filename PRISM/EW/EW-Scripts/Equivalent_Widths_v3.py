@@ -50,7 +50,7 @@ def main():
       
 
     #Save EW estimate
-    n = 0
+    n = 4
     save_EW(n)
 
     
@@ -68,7 +68,7 @@ def main():
     ID = ID_data[0]
     EWD = pd.DataFrame(EW_data)
     
-    EWD.to_csv(f'{output_folder}/EW_output_{ID}.tsv', sep="\t", index=False)
+    #EWD.to_csv(f'{output_folder}/EW_output_{ID}.tsv', sep="\t", index=False)
     
     #Save spectrum with fitted continuum
     save_spectrum(ID)
