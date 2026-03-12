@@ -4,7 +4,7 @@
   Another chane is the computation of the EW for each line with a single function.
   Date: March 8th
 """
-  
+
 from specutils.fitting import fit_generic_continuum
 from specutils.analysis import equivalent_width
 from astropy.nddata import StdDevUncertainty
@@ -57,21 +57,22 @@ jades_EW_dO_data=[]
 #Define Spectral Regions for the emission lines: this is the region
 #we edit
 #//////////////////////////////////////
-indx=0
+indx=20
 
-Ha_ini, Ha_end = 6471 *u.AA, 6622 *u.AA
-Hb_ini, Hb_end = 4789 *u.AA, 4887 *u.AA
-O_ini, O_end = 4910 *u.AA, 5073 *u.AA
+Ha_ini, Ha_end = 6528 *u.AA, 6699 *u.AA
+Hb_ini, Hb_end = 4810 *u.AA, 4884 *u.AA
+O_ini, O_end = 4907 *u.AA, 5046 *u.AA
+
 #//////////////////////////////////////
 
 
 def main():
-  
-  
+
+
   #Save EW estimate
   save_EW(indx)
-  
-  
+
+
   #Save data in data frame
   EW_data = {
       "ID": ID_data,
@@ -95,12 +96,12 @@ def main():
       "[OIII]_ini": O_ini.value,
       "[OIII]_end": O_end.value
     }
-  
+
   ID = ID_array[indx]
   EWD = pd.DataFrame(EW_data)
   folder=objects_folder / f'{ID}'
   EWD.to_csv(f'{folder}/EW_output_{ID}_2.tsv', sep="\t", index=False)
-  EWD.to_csv(f'{output_folder}/EW_output_v6.tsv', sep="\t", index=False, mode='a', header=True)
+  #EWD.to_csv(f'{output_folder}/EW_output_v6.tsv', sep="\t", index=False, mode='a', header=False)
 
   print(f'Equitalent Widths for obj {ID}, saved!')
 
@@ -112,38 +113,40 @@ def main():
 #///          Functions                 ///
 #//////////////////////////////////////////
 def flux_stdDev(lambda_array, flux_array, regionLeft_ini, regionLeft_end, regionRight_ini, regionRight_end):
-    
+
     #Compute the standard deviation of the flux around a given line
     lambda_array = np.array(lambda_array)
     flux_array = np.array(flux_array)
-    
+
     # Crear máscara booleana para el rango deseado
     lambda_ini = regionLeft_ini
     lambda_end = regionLeft_end
     mask_left = (lambda_array >= lambda_ini) & (lambda_array <= lambda_end)
-    
+
     lambda_ini = regionRight_ini
     lambda_end = regionRight_end
     mask_right = (lambda_array >= lambda_ini) & (lambda_array <= lambda_end)
-    
+
     # Extraer los valores correspondientes
     lambda_left = lambda_array[mask_left]
     flux_left = flux_array[mask_left]
-    
+
     lambda_right = lambda_array[mask_right]
     flux_right = flux_array[mask_right]
-    
+
     stdDev_left = np.std(flux_left)
     stdDev_right = np.std(flux_right)
     
+    print(len(flux_left))
+
     return (stdDev_left + stdDev_right)/2
 
 
 
-#Compute EW for the given line 
+#Compute EW for the given line
 def compute_line_EW(lamb, flux, flux_uncertainty, exclusion_regions, line_region):
-  
-  
+
+
   #Remove NaN values
   mask = np.isfinite(flux)
   spectrum = Spectrum(spectral_axis=lamb[mask],
@@ -155,10 +158,10 @@ def compute_line_EW(lamb, flux, flux_uncertainty, exclusion_regions, line_region
 
     #//////// Compute continuum by fitting /////////
     Continuum_fit = fit_generic_continuum(spectrum, exclude_regions=exclusion_regions)(spectrum.spectral_axis)
-  
+
     #////// Normalize the spectrum by its continuum ///////////
     Normalized_continuum_spectrum = spectrum / Continuum_fit
-    
+
     #////// Compute Equivalent Width ///////////
     EW = equivalent_width(Normalized_continuum_spectrum, continuum=1, regions=line_region)
 
@@ -166,20 +169,22 @@ def compute_line_EW(lamb, flux, flux_uncertainty, exclusion_regions, line_region
 
 #Compute the Equivalent Widths for Halpha, Hbeta and [OIII]
 def compute_EWs(lambda_rest, flux):
-  
+
   lambda_rest_Angstrom = lambda_rest *u.AA
   flux_Jy = flux * u.Jy
-  
+
   #/////////// Equivalent Widths ////////////
-    
+
   #//// H alfa
-  
+
   #Uncertainty of the flux
   flux_err_Ha = flux_stdDev(lambda_rest, flux, Ha_ini.value - 500, Ha_ini.value, Ha_end.value, Ha_end.value + 500 )
   flux_err_Jy = flux_err_Ha * np.ones(len(flux)) * u.Jy
   flux_uncertainty = StdDevUncertainty(flux_err_Jy)
+  
 
-  #  Regions to exlude 
+
+  #  Regions to exlude
   lamb = lambda_rest_Angstrom
   Ha_left = SpectralRegion(lamb[0], Ha_ini - 500 *u.AA)
   Ha_region = SpectralRegion(Ha_ini, Ha_end)
@@ -189,12 +194,12 @@ def compute_EWs(lambda_rest, flux):
 
   #// Compute EW of Ha //
   Ha_EW, Ha_EW_err = compute_line_EW(lambda_rest_Angstrom, flux_Jy, flux_uncertainty, Ha_exclusion_regions, Ha_region)
-  
+
   #//// H beta and OIII
-  
+
   #Uncertainty of the flux
   flux_err_Hb = flux_stdDev(lambda_rest, flux, Hb_ini.value - 500, Hb_ini.value, O_end.value, O_end.value + 500)
-  flux_err_Jy = flux_err_Ha * np.ones(len(flux)) * u.Jy
+  flux_err_Jy = flux_err_Hb * np.ones(len(flux)) * u.Jy
   flux_uncertainty = StdDevUncertainty(flux_err_Jy)
 
   #For Hb and [OIII]
@@ -208,13 +213,15 @@ def compute_EWs(lambda_rest, flux):
   Hb_EW, Hb_EW_err = compute_line_EW(lambda_rest_Angstrom, flux_Jy, flux_uncertainty, Hb_exclusion_regions, Hb_region)
   O3_EW, O3_EW_err = compute_line_EW(lambda_rest_Angstrom, flux_Jy, flux_uncertainty, Hb_exclusion_regions, O3_region)
   
+  
+
   return Ha_EW, Ha_EW_err, Hb_EW, Hb_EW_err, O3_EW, O3_EW_err
 
 
 
 #Use the codes above for the given MAST and JADES file
 def EquivalentWidths(mast_file, jades_file, z):
-    
+
   with fits.open(mast_file) as m_f:
     #Extract data from the file
     specdata=m_f[1].data
@@ -225,22 +232,22 @@ def EquivalentWidths(mast_file, jades_file, z):
 
     #Extract flux in Jy from .fits
     flux = specdata['FLUX']
-    
+
     mast_EW = compute_EWs(lambda_rest, flux)
-    
+
   with fits.open(jades_file) as j_f:
     specdata=j_f[1].data
-    
+
     #Compute rest wavelength
     lambda_obs = specdata['WAVELENGTH'] * 1e-6 / 1e-10 #convert from um to AA.
     lambda_rest = lambda_obs / (1.+float(z))
-    
+
     #Extract and convert flux from working units to Jy
     flux_erg = specdata['FLUX'] #flux in erg cm-2 s-1 AA-1'
-    flux = flux_erg * lambda_obs**2 / 2.99792458e-5 
+    flux = flux_erg * lambda_obs**2 / 2.99792458e-5
 
     jades_EW = compute_EWs(lambda_rest, flux)
-    
+
     return mast_EW, jades_EW
 
 
@@ -250,7 +257,7 @@ def save_EW(index):
     jades_file = jades_folder / JADES_files[index]
     mast_file = mast_folder / MAST_files[index]
     z = z_array[index]
-    
+
     mast_output, jades_output = EquivalentWidths(mast_file, jades_file, z)
 
 

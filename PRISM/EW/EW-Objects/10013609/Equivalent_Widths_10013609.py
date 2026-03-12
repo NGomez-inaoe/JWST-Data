@@ -147,11 +147,11 @@ def compute_EW(mast_file, jades_file, z):
 
             lamb = lambda_rest_Angstrom
             #For Ha
-            Ha_left = SpectralRegion(lamb[0], Ha_ini - 500 *u.AA)
+            Ha_left = SpectralRegion(lamb[0], Ha_ini - 800 *u.AA)
             Ha_region = SpectralRegion(Ha_ini, Ha_end)
             Ha_region_excl = SpectralRegion(Ha_ini, Ha_end + 150 *u.AA )
             Ha_right = SpectralRegion(Ha_end + 350 *u.AA, lamb[-1])
-            Ha_exclusion_regions = [Ha_left, Ha_region_excl, Ha_right]
+            Ha_exclusion_regions = [Ha_left, Ha_region_excl]
 
             #For Hb and [OIII]
             Hb_left = SpectralRegion(lamb[0], Hb_ini - 500 *u.AA)
@@ -221,11 +221,11 @@ def compute_EW(mast_file, jades_file, z):
 
             lamb = lambda_rest_Angstrom
             #For Ha
-            Ha_left = SpectralRegion(lamb[0], Ha_ini - 500 *u.AA)
+            Ha_left = SpectralRegion(lamb[0], Ha_ini - 800 *u.AA)
             Ha_region = SpectralRegion(Ha_ini, Ha_end)
             Ha_region_excl = SpectralRegion(Ha_ini, Ha_end + 150 *u.AA )
             Ha_right = SpectralRegion(Ha_end + 350 *u.AA, lamb[-1])
-            Ha_exclusion_regions = [Ha_left, Ha_region_excl, Ha_right]
+            Ha_exclusion_regions = [Ha_left, Ha_region_excl]
 
             #For Hb and [OIII]
             Hb_left = SpectralRegion(lamb[0], Hb_ini - 500 *u.AA)

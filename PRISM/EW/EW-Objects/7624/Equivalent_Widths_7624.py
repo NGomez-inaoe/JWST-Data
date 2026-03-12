@@ -58,7 +58,7 @@ jades_EW_dO_data=[]
 #//////////////////////////////////////
 indx=15
 
-Ha_ini, Ha_end = 6510 *u.AA, 6587 *u.AA
+Ha_ini, Ha_end = 6524 *u.AA, 6577 *u.AA
 Hb_ini, Hb_end = 4793 *u.AA, 4819 *u.AA
 O_ini, O_end = 4914 *u.AA, 5062 *u.AA
 #//////////////////////////////////////
@@ -94,7 +94,7 @@ def main():
     EWD = pd.DataFrame(EW_data)
     folder=objects_folder / f'{ID}'
     EWD.to_csv(f'{folder}/EW_output_{ID}.tsv', sep="\t", index=False)
-    EWD.to_csv(f'{output_folder}/EW_output_v5.tsv', sep="\t", index=False, mode='a', header=False)
+    #EWD.to_csv(f'{output_folder}/EW_output_v5.tsv', sep="\t", index=False, mode='a', header=False)
 
 
     print(f'Equitalent Widths for obj {ID}, saved!')

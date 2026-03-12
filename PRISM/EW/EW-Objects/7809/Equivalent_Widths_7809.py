@@ -56,7 +56,7 @@ jades_EW_dO_data=[]
 #Define Spectral Regions for the emission lines: this is the region
 #we edit
 #//////////////////////////////////////
-indx=16
+indx=17
 
 Ha_ini, Ha_end = 6506 *u.AA, 6615 *u.AA
 Hb_ini, Hb_end = 4809 *u.AA, 4897 *u.AA

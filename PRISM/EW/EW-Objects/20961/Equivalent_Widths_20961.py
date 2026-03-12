@@ -75,10 +75,6 @@ def main():
     EW_data = {
         "ID": ID_data,
         "redshift": z_data,
-        "EW(Ha) MAST": mast_EW_Ha_data,
-        "EW(Ha) unc MAST": mast_EW_dHa_data,
-        "EW(Ha) JADES": jades_EW_Ha_data,
-        "EW(Ha) unc JADES": jades_EW_dHa_data,
         "EW(Hb) MAST": mast_EW_Hb_data,
         "EW(Hb) unc MAST": mast_EW_dHb_data,
         "EW(Hb) JADES": jades_EW_Hb_data,

@@ -94,7 +94,7 @@ def main():
     EWD = pd.DataFrame(EW_data)
     folder=objects_folder / f'{ID}'
     EWD.to_csv(f'{folder}/EW_output_{ID}.tsv', sep="\t", index=False)
-    EWD.to_csv(f'{output_folder}/EW_output_v5.tsv', sep="\t", index=False, mode='a', header=False)
+    #EWD.to_csv(f'{output_folder}/EW_output_v5.tsv', sep="\t", index=False, mode='a', header=False)
 
 
     print(f'Equitalent Widths for obj {ID}, saved!')
