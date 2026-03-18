@@ -1,8 +1,10 @@
 """
-in this new version: Equivalent widths are calculated
-taking only the continuum around the lines of interes intead to the whole
-spectrum
+  This version implements uncertainties from the distribution of the spectrum itself around the lines
+  with the std deviation of the flux values, instead of extracting directly from the .fits file.
+  Another chane is the computation of the EW for each line with a single function.
+  Date: March 8th
 """
+
 from specutils.fitting import fit_generic_continuum
 from specutils.analysis import equivalent_width
 from astropy.nddata import StdDevUncertainty
@@ -16,7 +18,6 @@ import seaborn as sns
 import pandas as pd
 import numpy as np
 import warnings
-
 
 
 #Define source path where the files are
@@ -64,201 +65,227 @@ O_ini, O_end = 4934 *u.AA, 5038 *u.AA
 #//////////////////////////////////////
 
 
-
 def main():
 
-    #Save EW estimate
-    save_EW(indx)
-    save_spectra(indx)
 
-    #Save data in data frame
-    EW_data = {
-        "ID": ID_data,
-        "redshift": z_data,
-        "EW(Ha) MAST": mast_EW_Ha_data,
-        "EW(Ha) unc MAST": mast_EW_dHa_data,
-        "EW(Ha) JADES": jades_EW_Ha_data,
-        "EW(Ha) unc JADES": jades_EW_dHa_data,
-        "EW(Hb) MAST": mast_EW_Hb_data,
-        "EW(Hb) unc MAST": mast_EW_dHb_data,
-        "EW(Hb) JADES": jades_EW_Hb_data,
-        "EW(Hb) unc JADES": jades_EW_dHb_data,
-        "EW([OIII]) MAST": mast_EW_O_data,
-        "EW([OIII]) unc MAST": mast_EW_dO_data,
-        "EW([OIII]) JADES": jades_EW_O_data,
-        "EW([OIII]) unc JADES": jades_EW_dO_data
+  #Save EW estimate
+  save_EW(indx)
+
+
+  #Save data in data frame
+  EW_data = {
+      "ID": ID_data,
+      "redshift": z_data,
+      "EW(Ha) MAST": mast_EW_Ha_data,
+      "DEW(Ha) MAST": mast_EW_dHa_data,
+      "EW(Ha) JADES": jades_EW_Ha_data,
+      "DEW(Ha) JADES": jades_EW_dHa_data,
+      "EW(Hb) MAST": mast_EW_Hb_data,
+      "DEW(Hb) MAST": mast_EW_dHb_data,
+      "EW(Hb) JADES": jades_EW_Hb_data,
+      "DEW(Hb) JADES": jades_EW_dHb_data,
+      "EW([OIII]) MAST": mast_EW_O_data,
+      "EW([OIII]) unc MAST": mast_EW_dO_data,
+      "EW([OIII]) JADES": jades_EW_O_data,
+      "EW([OIII]) unc JADES": jades_EW_dO_data,
+      "Ha_ini": Ha_ini.value,
+      "Ha_end": Ha_end.value,
+      "Hb_ini": Hb_ini.value,
+      "Hb_end": Hb_end.value,
+      "[OIII]_ini": O_ini.value,
+      "[OIII]_end": O_end.value
     }
 
-    #Save the EW estimations in external file
-    ID = ID_array[indx]
-    EWD = pd.DataFrame(EW_data)
-    folder=objects_folder / f'{ID}'
-    EWD.to_csv(f'{folder}/EW_output_{ID}.tsv', sep="\t", index=False)
-    EWD.to_csv(f'{output_folder}/EW_output_v5.tsv', sep="\t", index=False, mode='a', header=False)
+  ID = ID_array[indx]
+  EWD = pd.DataFrame(EW_data)
+  folder=objects_folder / f'{ID}'
+  EWD.to_csv(f'{folder}/EW_output_{ID}_2.tsv', sep="\t", index=False)
+  EWD.to_csv(f'{output_folder}/EW_output_v6_1.tsv', sep="\t", index=False, mode='a', header=False)
 
-
-    print(f'Equitalent Widths for obj {ID}, saved!')
+  print(f'Equitalent Widths for obj {ID}, saved!')
+  
 
 
 
 
 #//////////////////////////////////////////
-#///       Functions                    ///
+#///          Functions                 ///
 #//////////////////////////////////////////
-def compute_EW(mast_file, jades_file, z):
+def flux_stdDev(lambda_array, flux_array, regionLeft_ini, regionLeft_end, regionRight_ini, regionRight_end):
 
-    #///////// Extract MAST DATA /////////
+    #Compute the standard deviation of the flux around a given line
+    lambda_array = np.array(lambda_array)
+    flux_array = np.array(flux_array)
 
+    # Crear máscara booleana para el rango deseado
+    lambda_ini = regionLeft_ini
+    lambda_end = regionLeft_end
+    mask_left = (lambda_array >= lambda_ini) & (lambda_array <= lambda_end)
+
+    lambda_ini = regionRight_ini
+    lambda_end = regionRight_end
+    mask_right = (lambda_array >= lambda_ini) & (lambda_array <= lambda_end)
+
+    # Extraer los valores correspondientes
+    lambda_left = lambda_array[mask_left]
+    flux_left = flux_array[mask_left]
+
+    lambda_right = lambda_array[mask_right]
+    flux_right = flux_array[mask_right]
+
+    stdDev_left = np.std(flux_left)
+    stdDev_right = np.std(flux_right)
+    
+    
+
+    return (stdDev_left + stdDev_right)/2
+
+
+
+#Compute EW for the given line
+def compute_line_EW(lamb, flux, flux_uncertainty, exclusion_regions, line_region):
+
+
+  spectrum = Spectrum(spectral_axis=lamb,
+                              flux=flux,
+                              uncertainty=flux_uncertainty)
+  
+  
+
+  with warnings.catch_warnings(): #ignore warnings
+    warnings.simplefilter('ignore')
+
+    #//////// Compute continuum by fitting /////////
+    try:
+      Continuum_fit = fit_generic_continuum(spectrum, exclude_regions=exclusion_regions)(spectrum.spectral_axis)
+
+
+    except Exception:
+      Continuum_fit = None
+    
+    #////// Compute Equivalent Width ///////////
+    if Continuum_fit is not None:
+      # Normalize the spectrum by its continuum 
+      Normalized_continuum_spectrum = spectrum / Continuum_fit
+    
+      try:
+        
+        ew = equivalent_width(Normalized_continuum_spectrum, continuum=1, regions=line_region)
+        EW = ew.value
+        EW_err = ew.uncertainty.value
+        
+      except IndexError:
+        EW = np.nan
+        EW_err = np.nan
+        
+    else:
+      EW = np.nan
+      EW_err = np.nan
+      
+    
+
+  return EW, EW_err
+
+
+#Compute the Equivalent Widths for Halpha, Hbeta and [OIII]
+def compute_EWs(lambda_rest, flux):
+
+  
+  lambda_rest_Angstrom = lambda_rest *u.AA
+  
+  flux_Jy = flux * u.Jy
+
+  #/////////// Equivalent Widths ////////////
+
+  #//// H alfa
+
+  #Uncertainty of the flux
+  flux_err_Ha = flux_stdDev(lambda_rest, flux, Ha_ini.value - 500, Ha_ini.value, Ha_end.value, Ha_end.value + 500 )
+  flux_err_Jy = flux_err_Ha * np.ones(len(flux)) * u.Jy
+  flux_uncertainty = StdDevUncertainty(flux_err_Jy)
+  
+  
+
+  #  Regions to exlude
+  lamb = lambda_rest_Angstrom
+  Ha_left = SpectralRegion(lamb[0], Ha_ini - 500 *u.AA)
+  Ha_region = SpectralRegion(Ha_ini, Ha_end)
+  Ha_region_excl = SpectralRegion(Ha_ini, Ha_end + 150 *u.AA )
+  Ha_right = SpectralRegion(Ha_end + 350 *u.AA, lamb[-1])
+  Ha_exclusion_regions = [Ha_left, Ha_region_excl, Ha_right]
+
+  #// Compute EW of Ha //
+  Ha_EW, Ha_EW_err = compute_line_EW(lambda_rest_Angstrom, flux_Jy, flux_uncertainty, Ha_exclusion_regions, Ha_region)
+
+  #//// H beta and OIII
+
+  #Uncertainty of the flux
+  flux_err_Hb = flux_stdDev(lambda_rest, flux, Hb_ini.value - 500, Hb_ini.value, O_end.value, O_end.value + 500)
+  flux_err_Jy = flux_err_Hb * np.ones(len(flux)) * u.Jy
+  flux_uncertainty = StdDevUncertainty(flux_err_Jy)
+
+  #For Hb and [OIII]
+  Hb_left = SpectralRegion(lamb[0], Hb_ini - 500 *u.AA)
+  Hb_region = SpectralRegion(Hb_ini, Hb_end)
+  O3_region = SpectralRegion(O_ini, O_end)
+  O3_right = SpectralRegion(O_end + 500 *u.AA, lamb[-1])
+  Hb_exclusion_regions = [Hb_left, Hb_region, O3_region, O3_right]
+
+  #// Compute EW of Hb and [OIII] //
+  Hb_EW, Hb_EW_err = compute_line_EW(lambda_rest_Angstrom, flux_Jy, flux_uncertainty, Hb_exclusion_regions, Hb_region)
+  O3_EW, O3_EW_err = compute_line_EW(lambda_rest_Angstrom, flux_Jy, flux_uncertainty, Hb_exclusion_regions, O3_region)
+  
+  
+
+  return Ha_EW, Ha_EW_err, Hb_EW, Hb_EW_err, O3_EW, O3_EW_err
+
+
+
+#Use the codes above for the given MAST and JADES file
+def EquivalentWidths(mast_file, jades_file, z):
+
+
+  with fits.open(jades_file) as j_f:
+    specdata=j_f[1].data
+
+    #Extract and convert flux from working units to Jy
+    flux_erg = specdata['FLUX'] #flux in erg cm-2 s-1 AA-1'
+    mask = np.isfinite(flux_erg)
+    flux_erg = flux_erg[mask]
+
+    #Compute rest wavelength
+    lambda_obs = specdata['WAVELENGTH'] * 1e-6 / 1e-10 #convert from um to AA.
+    lambda_rest = lambda_obs[mask] / (1.+float(z))
+
+    flux = flux_erg * lambda_obs[mask]**2 / 2.99792458e-5
+    
+    jades_EW = compute_EWs(lambda_rest, flux)
+  
+  
+  try:
     with fits.open(mast_file) as m_f:
-        #Extract data from the file
-        specdata=m_f[1].data
+      #Extract data from the file
+      specdata=m_f[1].data
 
-        #Compute rest wavelength
-        lambda_obs = specdata['WAVELENGTH'] * 1e-6 / 1e-10 #convert from um to AA.
-        lambda_rest = lambda_obs / (1.+float(z))
-        lambda_rest_Angstrom = lambda_rest * u.AA #u.AA just includes the units
+      #Extract flux in Jy from .fits
+      flux = specdata['FLUX']
 
-        #Extract flux in Jy from .fits
-        flux = specdata['FLUX']
-        flux_Jy = flux * u.Jy
+      #Remove NaN values
+      mask = np.isfinite(flux)
+      flux = flux[mask]    
 
-        #Uncertainty of the flux
-        flux_err = specdata['FLUX_ERROR']
-        flux_err_Jy = flux_err * u.Jy
-        flux_uncertainty = StdDevUncertainty(flux_err_Jy)
+      #Compute rest wavelength
+      lambda_obs = specdata['WAVELENGTH'] * 1e-6 / 1e-10 #convert from um to AA.
+      lambda_rest = lambda_obs[mask] / (1.+float(z))
+    
+      mast_EW = compute_EWs(lambda_rest, flux)
+    
+  except FileNotFoundError:
+    print(f'MAST file for Object {ID_array[indx]} not found')  
+    mast_EW = np.nan, np.nan, np.nan, np.nan, np.nan, np.nan
+    pass
 
-        #Define the spectrum over which the EW will be calculated, use class Spectrum1D from specutils
-        spectrum = Spectrum(spectral_axis=lambda_rest_Angstrom,
-                                 flux=flux_Jy,
-                                 uncertainty=flux_uncertainty)
-
-
-        #Remove NaN values
-        mask = np.isfinite(spectrum.flux.value)
-        clean_spectrum = Spectrum(spectral_axis=lambda_rest_Angstrom[mask],
-                              flux=flux_Jy[mask],
-                              uncertainty=flux_uncertainty[mask])
-
-
-        with warnings.catch_warnings(): #ignore warnings
-            warnings.simplefilter('ignore')
-
-            #///////// Regions to exlude /////////
-
-            lamb = lambda_rest_Angstrom
-            #For Ha
-            Ha_left = SpectralRegion(lamb[0], Ha_ini - 500 *u.AA)
-            Ha_region = SpectralRegion(Ha_ini, Ha_end)
-            Ha_region_excl = SpectralRegion(Ha_ini, Ha_end + 150 *u.AA )
-            Ha_right = SpectralRegion(Ha_end + 350 *u.AA, lamb[-1])
-            Ha_exclusion_regions = [Ha_left, Ha_region_excl, Ha_right]
-
-            #For Hb and [OIII]
-            Hb_left = SpectralRegion(lamb[0], Hb_ini - 500 *u.AA)
-            Hb_region = SpectralRegion(Hb_ini, Hb_end)
-            OIII_region = SpectralRegion(O_ini, O_end)
-            OIII_right = SpectralRegion(O_end + 500 *u.AA, lamb[-1])
-            Hb_exclusion_regions = [Hb_left, Hb_region, OIII_region, OIII_right]
-
-            #//////// Compute continuum by fitting /////////
-
-            Ha_continuum_fit = fit_generic_continuum(clean_spectrum, exclude_regions=Ha_exclusion_regions)(clean_spectrum.spectral_axis)
-            Hb_continuum_fit = fit_generic_continuum(clean_spectrum, exclude_regions=Hb_exclusion_regions)(clean_spectrum.spectral_axis)
-
-
-            #////// Normalize the spectrum by its continuum ///////////
-
-            Ha_normalized_continuum_spec = clean_spectrum / Ha_continuum_fit
-            Hb_normalized_continuum_spec = clean_spectrum / Hb_continuum_fit
-
-            #////// Compute Equivalent Width ///////////
-
-            Ha_EW = equivalent_width(Ha_normalized_continuum_spec, continuum=1, regions=Ha_region)
-            Hb_EW = equivalent_width(Hb_normalized_continuum_spec, continuum=1, regions=Hb_region)
-            OIII_EW = equivalent_width(Hb_normalized_continuum_spec, continuum=1, regions=OIII_region)
-
-            # Save the results
-            mast_output = [Ha_EW.value, Ha_EW.uncertainty, Hb_EW.value, Hb_EW.uncertainty, OIII_EW.value, OIII_EW.uncertainty]
-
-
-        #///////// Extract JADES DATA /////////
-
-    with fits.open(jades_file) as j_f:
-        #Extract data from the file
-        specdata=j_f[1].data
-
-        #Compute rest wavelength
-        lambda_obs = specdata['WAVELENGTH'] * 1e-6 / 1e-10 #convert from um to AA.
-        lambda_rest = lambda_obs / (1.+float(z))
-        lambda_rest_Angstrom = lambda_rest * u.AA #u.AA just includes the units
-
-        #Extract and convert flux from working units to Jy
-        flux = specdata['FLUX'] #flux in erg cm-2 s-1 AA-1'
-        flux_Jy = flux * lambda_obs**2 / 2.99792458e-5 *u.Jy
-
-        #Uncertainty of the flux
-        flux_err = specdata['FLUX_ERR'] * lambda_obs**2 / 2.99792458e-5
-        flux_err_Jy = flux_err * u.Jy
-        flux_uncertainty = StdDevUncertainty(flux_err_Jy)
-
-        #Define the spectrum over which the EW will be calculated, use class Spectrum1D from specutils
-        spectrum = Spectrum(spectral_axis=lambda_rest_Angstrom,
-                                 flux=flux_Jy,
-                                 uncertainty=flux_uncertainty)
-
-
-        #Remove NaN values
-        mask = np.isfinite(spectrum.flux.value)
-        clean_spectrum = Spectrum(spectral_axis=lambda_rest_Angstrom[mask],
-                              flux=flux_Jy[mask],
-                              uncertainty=flux_uncertainty[mask])
-
-
-        with warnings.catch_warnings(): #ignore warnings
-            warnings.simplefilter('ignore')
-
-            #///////// Regions to exlude /////////
-
-            lamb = lambda_rest_Angstrom
-            #For Ha
-            Ha_left = SpectralRegion(lamb[0], Ha_ini - 500 *u.AA)
-            Ha_region = SpectralRegion(Ha_ini, Ha_end)
-            Ha_region_excl = SpectralRegion(Ha_ini, Ha_end + 150 *u.AA )
-            Ha_right = SpectralRegion(Ha_end + 350 *u.AA, lamb[-1])
-            Ha_exclusion_regions = [Ha_left, Ha_region_excl, Ha_right]
-
-            #For Hb and [OIII]
-            Hb_left = SpectralRegion(lamb[0], Hb_ini - 500 *u.AA)
-            Hb_region = SpectralRegion(Hb_ini, Hb_end)
-            OIII_region = SpectralRegion(O_ini, O_end)
-            OIII_right = SpectralRegion(O_end + 500 *u.AA, lamb[-1])
-            Hb_exclusion_regions = [Hb_left, Hb_region, OIII_region, OIII_right]
-
-            #//////// Compute continuum by fitting /////////
-
-            Ha_continuum_fit = fit_generic_continuum(clean_spectrum, exclude_regions=Ha_exclusion_regions)(clean_spectrum.spectral_axis)
-            Hb_continuum_fit = fit_generic_continuum(clean_spectrum, exclude_regions=Hb_exclusion_regions)(clean_spectrum.spectral_axis)
-
-
-            #////// Normalize the spectrum by its continuum ///////////
-
-            Ha_normalized_continuum_spec = clean_spectrum / Ha_continuum_fit
-            Hb_normalized_continuum_spec = clean_spectrum / Hb_continuum_fit
-
-            #////// Compute Equivalent Width ///////////
-
-            Ha_EW = equivalent_width(Ha_normalized_continuum_spec, continuum=1, regions=Ha_region)
-            Hb_EW = equivalent_width(Hb_normalized_continuum_spec, continuum=1, regions=Hb_region)
-            OIII_EW = equivalent_width(Hb_normalized_continuum_spec, continuum=1, regions=OIII_region)
-
-            # Save the results
-            jades_output = [Ha_EW.value, Ha_EW.uncertainty, Hb_EW.value, Hb_EW.uncertainty, OIII_EW.value, OIII_EW.uncertainty]
-
-
-    return mast_output, jades_output
-
-
-
+  return mast_EW, jades_EW
 
 def save_EW(index):
 
@@ -267,8 +294,8 @@ def save_EW(index):
     mast_file = mast_folder / MAST_files[index]
     z = z_array[index]
 
-    #Get the output from compute_()
-    mast_output, jades_output = compute_EW(mast_file, jades_file, z)
+    mast_output, jades_output = EquivalentWidths(mast_file, jades_file, z)
+
 
     #Save output appending to arrays
     ID_data.append(ID_array[index])
@@ -287,273 +314,6 @@ def save_EW(index):
     jades_EW_dHb_data.append(jades_output[3] )
     jades_EW_O_data.append(  jades_output[4] )
     jades_EW_dO_data.append( jades_output[5] )
-
-
-
-def plot_spectra(mast_file, jades_file, z, ID):
-
-
-    #//////// The same as before, now in order to plot the spectrum /////////////////
-    #///////// Extract MAST DATA /////////
-
-    with fits.open(mast_file) as m_f:
-        #Extract data from the file
-        specdata=m_f[1].data
-
-        #Compute rest wavelength
-        mast_lambda_obs = specdata['WAVELENGTH'] * 1e-6 / 1e-10 #convert from um to AA.
-        lambda_rest = mast_lambda_obs / (1.+float(z))
-        lambda_rest_Angstrom = lambda_rest * u.AA #u.AA just includes the units
-
-
-        #Extract flux in Jy from .fits
-        flux = specdata['FLUX']
-        flux_Jy = flux * u.Jy
-
-
-        #Uncertainty of the flux
-        flux_err = specdata['FLUX_ERROR']
-        flux_err_Jy = flux_err * u.Jy
-        flux_uncertainty = StdDevUncertainty(flux_err_Jy)
-
-        #Define the spectrum over which the EW will be calculated, use class Spectrum1D from specutils
-        spectrum = Spectrum(spectral_axis=lambda_rest_Angstrom,
-                                 flux=flux_Jy,
-                                 uncertainty=flux_uncertainty)
-
-
-        #Remove NaN values
-        mast_mask = np.isfinite(spectrum.flux.value)
-        mast_spectrum = Spectrum(spectral_axis=lambda_rest_Angstrom[mast_mask],
-                              flux=flux_Jy[mast_mask],
-                              uncertainty=flux_uncertainty[mast_mask])
-
-
-
-
-        with warnings.catch_warnings(): #ignore warnings
-            warnings.simplefilter('ignore')
-
-            #///////// Regions to exlude /////////
-
-            lamb = lambda_rest_Angstrom
-            #For Ha
-            Ha_left = SpectralRegion(lamb[0], Ha_ini - 500 *u.AA)
-            Ha_region = SpectralRegion(Ha_ini, Ha_end)
-            Ha_region_excl = SpectralRegion(Ha_ini, Ha_end + 150 *u.AA )
-            Ha_right = SpectralRegion(Ha_end + 350 *u.AA, lamb[-1])
-            Ha_exclusion_regions = [Ha_left, Ha_region_excl, Ha_right]
-
-            #For Hb and [OIII]
-            Hb_left = SpectralRegion(lamb[0], Hb_ini - 500 *u.AA)
-            Hb_region = SpectralRegion(Hb_ini, Hb_end)
-            OIII_region = SpectralRegion(O_ini, O_end)
-            OIII_right = SpectralRegion(O_end + 500 *u.AA, lamb[-1])
-            Hb_exclusion_regions = [Hb_left, Hb_region, OIII_region, OIII_right]
-
-            #//////// Compute continuum by fitting /////////
-
-            mast_Ha_continuum_fit = fit_generic_continuum(mast_spectrum, exclude_regions=Ha_exclusion_regions)(mast_spectrum.spectral_axis)
-            mast_Hb_continuum_fit = fit_generic_continuum(mast_spectrum, exclude_regions=Hb_exclusion_regions)(mast_spectrum.spectral_axis)
-
-
-        #///////// Extract JADES DATA /////////
-
-    with fits.open(jades_file) as j_f:
-        #Extract data from the file
-        specdata=j_f[1].data
-
-        #Compute rest wavelength
-        jades_lambda_obs = specdata['WAVELENGTH'] * 1e-6 / 1e-10 #convert from um to AA.
-        lambda_rest = jades_lambda_obs / (1.+float(z))
-        lambda_rest_Angstrom = lambda_rest * u.AA #u.AA just includes the units
-
-        #Extract and convert flux from working units to Jy
-        flux = specdata['FLUX'] #flux in erg cm-2 s-1 AA-1'
-        flux_Jy = flux * jades_lambda_obs**2 / 2.99792458e-5 *u.Jy
-
-        #Uncertainty of the flux
-        flux_err = specdata['FLUX_ERR'] * jades_lambda_obs**2 / 2.99792458e-5
-        flux_err_Jy = flux_err * u.Jy
-        flux_uncertainty = StdDevUncertainty(flux_err_Jy)
-
-        #Define the spectrum over which the EW will be calculated, use class Spectrum1D from specutils
-        spectrum = Spectrum(spectral_axis=lambda_rest_Angstrom,
-                                 flux=flux_Jy,
-                                 uncertainty=flux_uncertainty)
-
-
-        #Remove NaN values
-        mask = np.isfinite(spectrum.flux.value)
-        jades_spectrum = Spectrum(spectral_axis=lambda_rest_Angstrom[mask],
-                              flux=flux_Jy[mask],
-                              uncertainty=flux_uncertainty[mask])
-        jades_lambda = jades_spectrum.spectral_axis
-
-        with warnings.catch_warnings(): #ignore warnings
-            warnings.simplefilter('ignore')
-
-            #///////// Regions to exlude /////////
-
-            lamb = lambda_rest_Angstrom
-            #For Ha
-            Ha_left = SpectralRegion(lamb[0], Ha_ini - 500 *u.AA)
-            Ha_region = SpectralRegion(Ha_ini, Ha_end)
-            Ha_region_excl = SpectralRegion(Ha_ini, Ha_end + 150 *u.AA )
-            Ha_right = SpectralRegion(Ha_end + 350 *u.AA, lamb[-1])
-            Ha_exclusion_regions = [Ha_left, Ha_region_excl, Ha_right]
-
-            #For Hb and [OIII]
-            Hb_left = SpectralRegion(lamb[0], Hb_ini - 500 *u.AA)
-            Hb_region = SpectralRegion(Hb_ini, Hb_end)
-            OIII_region = SpectralRegion(O_ini, O_end)
-            OIII_right = SpectralRegion(O_end + 500 *u.AA, lamb[-1])
-            Hb_exclusion_regions = [Hb_left, Hb_region, OIII_region, OIII_right]
-
-            #//////// Compute continuum by fitting /////////
-
-            jades_Ha_continuum_fit = fit_generic_continuum(jades_spectrum, exclude_regions=Ha_exclusion_regions)(jades_spectrum.spectral_axis)
-            jades_Hb_continuum_fit = fit_generic_continuum(jades_spectrum, exclude_regions=Hb_exclusion_regions)(jades_spectrum.spectral_axis)
-
-
-
-    """
-    //////////////////////////////////////////////////////////////////
-    ///////////////     Plots of the spectrum       //////////////////
-    //////////////////////////////////////////////////////////////////
-    """
-
-    # ///////////////////  Plot Setting  ////////////////////////////
-    output_folder=objects_folder / f'{ID}'
-
-
-    #General Settings
-    plt.rc('axes', titlesize=18)     # fontsize of the axes title
-    plt.rc('axes', labelsize=18)     # fontsize of the x and y labels
-    plt.rc('axes', linewidth=1.65 )   # width of the frame
-    plt.rc('xtick', labelsize=16)    # fontsize of the tick labels
-    plt.rc('ytick', labelsize=16)    # fontsize of the tick labels
-    plt.rc('legend', fontsize=12)    # legend fontsize
-    plt.rc('font', size=18)          # controls default text sizes
-
-
-
-    # Latex rendering
-    plt.rc('font', **{'family': 'serif', 'serif': ['palatino']}) #Helvetica
-    plt.rc('text', usetex=True)
-    plt.rc('font', weight='bold')
-
-
-    # --- Cosmology palette (normalized RGB) ---
-    COSMO_COLORS = {
-        "deep_blue": (30/255, 60/255, 120/255),
-        "warm_gold": (200/255, 140/255, 0/255),
-        "dark_teal": (0/255, 110/255, 110/255),
-        "soft_crimson": (150/255, 40/255, 40/255),
-        "cool_gray": (120/255, 120/255, 120/255),
-        }
-
-    sns.set_theme(
-        style="ticks",
-        context='notebook',
-        rc={
-            "xtick.direction": "in",
-            "ytick.direction": "in",
-            "xtick.top": True,
-            "ytick.right": True,
-            "axes.grid": True,
-        })
-
-    sns.set_palette([
-        COSMO_COLORS["deep_blue"],
-        "black",
-        COSMO_COLORS["warm_gold"],
-        COSMO_COLORS["cool_gray"],
-        COSMO_COLORS["dark_teal"],
-        COSMO_COLORS["soft_crimson"],
-        ])
-
-
-
-    #///////////////////////////// Figures ////////////////////
-    """
-    plt.figure()
-
-    #Plot for Ha region, only MAST
-    plt.rcParams["figure.figsize"] = (10, 10)
-    plt.ylabel(r' Flux [$\mathrm{Jy}$]')
-    plt.xlabel(r' $\lambda_{rest}$ [$\AA$]')
-    plt.title(f'ID={ID}, z={z}')
-    plt.tick_params(axis='x')
-    plt.tick_params(axis='y')
-    plt.minorticks_on()
-
-    plt.step(mast_spectrum.spectral_axis, mast_spectrum.flux, label=r'MAST $(H\alpha)$')
-    plt.step(mast_lambda, mast_Ha_continuum_fit, label='Continuum Fit (MAST)')
-    plt.xlim(Ha_ini.value - 500 , Ha_end.value + 350 )
-    plt.ylim(bottom=-1e-7)
-    legend=plt.legend(loc='best',labelspacing=0.1);
-    plt.setp(legend.get_texts());
-    plt.savefig(f'{output_folder}/EW_{ID}_Ha_mast.pdf')
-
-    #plt.show()
-    plt.close()
-
-
-    #Plot for Hb region, only MAST
-    plt.figure()
-    plt.rcParams["figure.figsize"] = (10, 10)
-    plt.ylabel(r' Flux [$\mathrm{Jy}$]')
-    plt.xlabel(r' $\lambda_{rest}$ [$\AA$]')
-    plt.title(f'ID={ID}, z={z}')
-    plt.tick_params(axis='x')
-    plt.tick_params(axis='y')
-    plt.minorticks_on()
-
-    plt.step(mast_spectrum.spectral_axis, mast_spectrum.flux, label=r'MAST $H\beta$')
-    plt.step(mast_lambda, mast_Hb_continuum_fit, label='Continuum Fit (MAST)')
-    legend=plt.legend(loc='best',labelspacing=0.1)
-    plt.setp(legend.get_texts())
-    plt.xlim(Hb_ini.value - 500 , O_end.value + 500 )
-    plt.ylim(bottom=-1e-7)
-    plt.savefig(f'{output_folder}/EW_{ID}_Hb_mast.pdf')
-    #plt.show()
-    plt.close()
-
-    """
-    #Plot for all the spectrum, both sources
-    plt.figure()
-    plt.rcParams["figure.figsize"] = (10, 10)
-    plt.ylabel(r' Flux [$\mathrm{erg s^{-1} cm^{-2} \AA}$]')
-    plt.xlabel(r' $\lambda_{rest}$ [$\AA$]')
-    plt.title(f'ID={ID}, z={z}')
-    plt.tick_params(axis='x')
-    plt.tick_params(axis='y')
-    plt.minorticks_on()
-
-    jades_flux_ergs = jades_spectrum.flux * 2.99792458e-5 / jades_lambda_obs[mask]**2
-    mast_flux_ergs = mast_spectrum.flux * 2.99792458e-5 / mast_lambda_obs[mast_mask]**2
-
-    plt.step(mast_spectrum.spectral_axis, mast_flux_ergs, label='MAST', color='black')
-    plt.step(jades_spectrum.spectral_axis, jades_flux_ergs, label='JADES', color=COSMO_COLORS['warm_gold'])
-
-    legend=plt.legend(loc='best',labelspacing=0.1)
-    plt.setp(legend.get_texts(),fontsize='14')
-    plt.savefig(f'{output_folder}/EW_{ID}_All.pdf')
-    plt.show()
-
-    #///////////////////////////// End of Figures ////////////////////
-
-
-
-def save_spectra(index):
-    #Extract file to use as input plot_spectra
-    jades_file = jades_folder / JADES_files[index]
-    mast_file = mast_folder / MAST_files[index]
-    z = z_array[index]
-    ID = ID_array[index]
-
-    plot_spectra(mast_file, jades_file, z, ID)
 
 #////////////////////////////////////
 #//////    End of Functions    //////
