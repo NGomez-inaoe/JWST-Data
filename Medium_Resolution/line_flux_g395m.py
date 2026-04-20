@@ -1,3 +1,4 @@
+import warnings
 import numpy as np
 import pandas as pd
 from pathlib import Path
@@ -30,7 +31,6 @@ O3_end_array = df["[OIII4959]_end"]
 o3_ini_array = df["[OIII5007]_ini"]
 o3_end_array = df["[OIII5007]_end"]
 
-
 #Create arrays to save the data with save_EW()
 ID_data =[]
 z_data = []
@@ -55,7 +55,7 @@ jades_o3_err_data=[]
 
 # Select object from the file
 #==================================================
-indx = 39
+indx = 2
 #Arrays for the lines
 Ha_region = [Ha_ini_array[indx], Ha_end_array[indx] ] 
 Hb_region = [Hb_ini_array[indx], Hb_end_array[indx] ] 
@@ -76,7 +76,8 @@ def main():
             print(JADES_files[index])
             
     """
-    save_line_fluxes(indx, plotRegion=Ha_region)
+    
+    save_line_fluxes(indx)
 
 
     #Save data in data frame
@@ -91,14 +92,18 @@ def main():
         "LF err(Hb) MAST": mast_Hb_err_data,
         "LF(Hb) JADES": jades_Hb_data,
         "LF err(Hb) JADES": jades_Hb_err_data,
-        "LF([OIII]) MAST": mast_O3_data,
-        "LF err([OIII]) MAST": mast_O3_err_data,
-        "LF([OIII]) JADES": jades_O3_data,
-        "LF err([OIII]) JADES": jades_O3_err_data
+        "LF([OIII]4959) MAST": mast_O3_data,
+        "LF err([OIII]4959) MAST": mast_O3_err_data,
+        "LF([OIII]4959) JADES": jades_O3_data,
+        "LF err([OIII]4959) JADES": jades_O3_err_data,
+        "LF([OIII]5007) MAST": mast_o3_data,
+        "LF err([OIII]5007) MAST": mast_o3_err_data,
+        "LF([OIII]5007) JADES": jades_o3_data,
+        "LF err([OIII]5007) JADES": jades_o3_err_data
     }
     
     LineFlux_df=pd.DataFrame(LF_data)
-    #LineFlux_df.to_csv('./Line_fluxes_v1.tsv', sep='\t', index=False)
+    LineFlux_df.to_csv('./Output_data/Line_fluxes_g395m_v1.tsv', sep='\t', index=False)
     
         
 
@@ -132,37 +137,61 @@ def flux_stdDev(lambda_array, flux_array, regionLeft, regionRight):
 #------------------------------------------------
 #
 #------------------------------------------------
-def compute_line_flux(lamb, flux, region):
+def compute_line_flux(lamb, flux, region, z):
     
     r_ini = region[0] 
     r_end = region[1] 
+    vlight = 2.99792458e-5 
     
-    #Flux Uncerainty
-    flux_err = flux_stdDev(lamb.value, flux.value, [r_ini - 50, r_ini], [r_end, r_end+ 50]) 
-    flux_err_Jy = flux_err * np.ones(len(flux)) * u.Jy
-    flux_uncertainty = StdDevUncertainty(flux_err_Jy)
+    with warnings.catch_warnings(): #ignore warnings
+        warnings.simplefilter('ignore')
 
-    spectrum = Spectrum(spectral_axis=lamb, flux=flux, uncertainty=flux_uncertainty)
+
+        if np.isfinite(r_ini) and np.isfinite(r_end):
     
-    l_flux = line_flux(spectrum, regions=SpectralRegion(r_ini* u.AA, r_end* u.AA))
-    l_flux_unc = l_flux.uncertainty
+
+            #Flux Uncerainty
+            flux_err = flux_stdDev(lamb.value, flux.value, [r_ini - 50, r_ini], [r_end, r_end+ 50]) 
+            flux_err_Jy = flux_err * np.ones(len(flux)) * u.Jy
+            flux_uncertainty = StdDevUncertainty(flux_err_Jy)
+
+            spectrum = Spectrum(spectral_axis=lamb, flux=flux, uncertainty=flux_uncertainty)
+
     
+            try:
+                l_flux = line_flux(spectrum, regions=SpectralRegion(r_ini* u.AA, r_end* u.AA))
+                l_flux_unc = l_flux.uncertainty
+                #Convert to ergs s-1 cm-2
+                l_flux = l_flux.value * vlight / ((1+float(z))*np.mean([r_ini, r_end]))**2
+                l_flux_unc = l_flux_unc.value 
+
         
-    return l_flux.value, l_flux_unc.value
+            except IndexError:
+                l_flux = np.nan
+                l_flux_unc = np.nan
+
+        else:
+            l_flux = np.nan
+            l_flux_unc = np.nan
+
+
+    return l_flux, l_flux_unc
 #------------------------------------------------
 #
 #------------------------------------------------        
-def get_line_fluxes(lambda_rest, flux):
+def get_line_fluxes(lambda_rest, flux, z):
     
     flux_Jy = flux * u.Jy
     lambda_rest_AA = lambda_rest *u.AA
     
     
-    Ha_flux, Ha_flux_unc = compute_line_flux(lambda_rest_AA, flux_Jy, Ha_region)
-    Hb_flux, Hb_flux_unc = compute_line_flux(lambda_rest_AA, flux_Jy, Hb_region)
-    O3_flux, O3_flux_unc = compute_line_flux(lambda_rest_AA, flux_Jy, O3_region)
-    
-    return Ha_flux, Ha_flux_unc, Hb_flux, Hb_flux_unc, O3_flux, O3_flux_unc
+    Ha_flux, Ha_flux_unc = compute_line_flux(lambda_rest_AA, flux_Jy, Ha_region, z) 
+    Hb_flux, Hb_flux_unc = compute_line_flux(lambda_rest_AA, flux_Jy, Hb_region, z)
+    O3_flux, O3_flux_unc = compute_line_flux(lambda_rest_AA, flux_Jy, O3_region, z)
+    o3_flux, o3_flux_unc = compute_line_flux(lambda_rest_AA, flux_Jy, o3_region, z)
+
+
+    return Ha_flux, Ha_flux_unc, Hb_flux, Hb_flux_unc, O3_flux, O3_flux_unc, o3_flux, o3_flux_unc
     
     
 def save_line_fluxes(index, plotRegion=None):
@@ -180,9 +209,9 @@ def save_line_fluxes(index, plotRegion=None):
         plot_spectrum_region(mast_file, jades_file, z, ID, region)
     
     
-    plot_spectrum_full(mast_file, jades_file, z, ID)
+        plot_spectrum_full(mast_file, jades_file, z, ID)
     
-    """ 
+    
     # ===== JADES =====
     with fits.open(jades_file) as f:
         specdata = f[1].data
@@ -198,7 +227,9 @@ def save_line_fluxes(index, plotRegion=None):
     
         flux = flux_erg * lambda_obs[mask]**2 / 2.99792458e-5
         
-        jades_fluxes = get_line_fluxes(lambda_rest, flux)
+
+        jades_fluxes = get_line_fluxes(lambda_rest, flux, z) 
+        
         
     # ===== MAST =====
     with fits.open(mast_file) as f:
@@ -214,7 +245,7 @@ def save_line_fluxes(index, plotRegion=None):
         lambda_rest = lambda_obs[mask] / (1.+float(z))
     
         
-        mast_fluxes = get_line_fluxes(lambda_rest, flux)
+        mast_fluxes = get_line_fluxes(lambda_rest, flux, z)
         
     # ==== Save the data ====
         
@@ -230,6 +261,9 @@ def save_line_fluxes(index, plotRegion=None):
     mast_Hb_err_data.append(mast_fluxes[3] )
     mast_O3_data.append(  mast_fluxes[4] )
     mast_O3_err_data.append( mast_fluxes[5] )
+    mast_o3_data.append(  mast_fluxes[6] )
+    mast_o3_err_data.append( mast_fluxes[7] )
+
 
     jades_Ha_data.append( jades_fluxes[0] )
     jades_Ha_err_data.append(jades_fluxes[1] )
@@ -237,7 +271,9 @@ def save_line_fluxes(index, plotRegion=None):
     jades_Hb_err_data.append(jades_fluxes[3] )
     jades_O3_data.append(  jades_fluxes[4] )
     jades_O3_err_data.append( jades_fluxes[5] )
-    """
+    jades_o3_data.append(  mast_fluxes[6] )
+    jades_o3_err_data.append( mast_fluxes[7] )
+
     
     print(f'Saved data for obj with ID={ID}')
 #------------------------------------------------
@@ -298,7 +334,7 @@ def plot_spectrum_region(mast_file, jades_file, z, ID, region):
     plt.title(f'ID={ID}, z={z:.2f}')
     plt.ylabel(r' Flux [$\mathrm{erg~s^{-1} cm^{-2} \AA^{-1} }$]')
     plt.xlabel(r' $\lambda_{rest}$ [$\AA$]')
-    #plt.xlim(region[0], region[1])
+    plt.xlim(region[0], region[1])
     
     file = jades_file
     with fits.open(file) as f:
