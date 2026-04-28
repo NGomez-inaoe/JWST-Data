@@ -100,7 +100,7 @@ def main():
   EWD = pd.DataFrame(EW_data)
   folder=objects_folder / f'{ID}'
   EWD.to_csv(f'{folder}/EW_output_{ID}_2.tsv', sep="\t", index=False)
-  EWD.to_csv(f'{output_folder}/EW_output_v6_1.tsv', sep="\t", index=False, mode='a', header=False)
+  #EWD.to_csv(f'{output_folder}/EW_output_v6_1.tsv', sep="\t", index=False, mode='a', header=False)
 
   print(f'Equitalent Widths for obj {ID}, saved!')
   
@@ -208,7 +208,7 @@ def compute_EWs(lambda_rest, flux):
 
   #  Regions to exlude
   lamb = lambda_rest_Angstrom
-  Ha_left = SpectralRegion(lamb[0], Ha_ini - 500 *u.AA)
+  Ha_left = SpectralRegion(lamb[0], Ha_ini - 1100 *u.AA)
   Ha_region = SpectralRegion(Ha_ini, Ha_end)
   Ha_region_excl = SpectralRegion(Ha_ini, Ha_end + 150 *u.AA )
   Ha_right = SpectralRegion(Ha_end + 350 *u.AA, lamb[-1])
