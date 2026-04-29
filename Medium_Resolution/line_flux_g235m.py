@@ -58,7 +58,6 @@ def main():
     
     
     for index in range(62):
-     
         save_line_fluxes(index, plot=False)
 
 
@@ -84,8 +83,8 @@ def main():
         "LF err([OIII]5007) JADES": jades_o3_err_data
     }
     
-    LineFlux_df=pd.DataFrame(LF_data)
-    LineFlux_df.to_csv('./Output_data/Line_fluxes_g235m_v1.tsv', sep='\t', index=False)
+    LineFlux_df=pd.DataFrame( LF_data)
+    LineFlux_df.to_csv('./Output_data/Line_fluxes_g235m_v3.tsv', sep='\t', index=False)
     
         
 
@@ -114,6 +113,10 @@ def flux_stdDev(lambda_array, flux_array, regionLeft, regionRight):
 
     stdDev_left = np.std(flux_left)
     stdDev_right = np.std(flux_right)
+    if np.isnan(stdDev_left):
+        stdDev_left = 0
+    if np.isnan(stdDev_right):
+        stdDev_right = 0
 
     return (stdDev_left + stdDev_right)/2
 #------------------------------------------------
@@ -130,10 +133,15 @@ def compute_line_flux(lamb, flux, region, z):
 
 
         if np.isfinite(r_ini) and np.isfinite(r_end):
-    
 
             #Flux Uncerainty
-            flux_err = flux_stdDev(lamb.value, flux.value, [r_ini - 50, r_ini], [r_end, r_end+ 50]) 
+            if r_end > 5050 or r_ini < 4900:
+                flux_err = flux_stdDev(lamb.value, flux.value, [r_ini - 50, r_ini], [r_end, r_end + 50]) 
+            else:
+                flux_err = flux_stdDev(lamb.value, flux.value, [4950 - 50, 4950], [5015, 5015 + 50]) 
+
+            flux_err_Jy = flux_err * np.ones(len(flux)) * u.Jy
+            flux_uncertainty = StdDevUncertainty(flux_err_Jy)
             flux_err_Jy = flux_err * np.ones(len(flux)) * u.Jy
             flux_uncertainty = StdDevUncertainty(flux_err_Jy)
 
@@ -157,7 +165,7 @@ def compute_line_flux(lamb, flux, region, z):
             l_flux_unc = np.nan
 
 
-    return l_flux, l_flux_unc
+    return l_flux*1e18, l_flux_unc*1e18
 #------------------------------------------------
 #
 #------------------------------------------------        

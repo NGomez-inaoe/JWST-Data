@@ -22,10 +22,10 @@ ID_array = df["NIRSpec_ID"]
 z_array = df["redshift"]
 JADES_files = df["JADES_FILENAME_F290LP-G395M"]
 MAST_files = df["MAST_FILENAME_F290LP-G395M"]
-Ha_ini_array = df["Ha_ini"]
-Ha_end_array = df["Ha_end"]
-Hb_ini_array = df["Hb_ini"]
-Hb_end_array = df["Hb_end"]
+Ha_ini_array = np.ones(len(ID_array)) * 6540 #df["Ha_ini"]
+Ha_end_array = np.ones(len(ID_array)) * 6585 #df["Ha_end"]
+Hb_ini_array = np.ones(len(ID_array)) * 4845 #df["Hb_ini"]
+Hb_end_array = np.ones(len(ID_array)) * 4875 #df["Hb_end"]
 O3_ini_array = df["[OIII4959]_ini"]
 O3_end_array = df["[OIII4959]_end"]
 o3_ini_array = df["[OIII5007]_ini"]
@@ -59,8 +59,8 @@ def main():
     
     for index in range(62):
      
-        save_line_fluxes(index)
-
+        save_line_fluxes(index, plot=False)
+        
 
     #Save data in data frame
     LF_data = {
@@ -85,7 +85,7 @@ def main():
     }
     
     LineFlux_df=pd.DataFrame(LF_data)
-    LineFlux_df.to_csv('./Output_data/Line_fluxes_g395m_v1.tsv', sep='\t', index=False)
+    LineFlux_df.to_csv('./Output_data/Line_fluxes_g395m_v3.tsv', sep='\t', index=False)
     
         
 
@@ -99,7 +99,8 @@ def flux_stdDev(lambda_array, flux_array, regionLeft, regionRight):
     lambda_array = np.array(lambda_array)
     flux_array = np.array(flux_array)
 
-    # Crear máscara booleana para el rango deseado
+    
+    # Create masks to select the values in the specified regions
     lambda_ini = regionLeft[0]
     lambda_end = regionLeft[1]
     mask_left = (lambda_array >= lambda_ini) & (lambda_array <= lambda_end)
@@ -107,13 +108,25 @@ def flux_stdDev(lambda_array, flux_array, regionLeft, regionRight):
     lambda_ini = regionRight[0]
     lambda_end = regionRight[1]
     mask_right = (lambda_array >= lambda_ini) & (lambda_array <= lambda_end)
-
-    # Extraer los valores correspondientes
+    
+    
+    # Extract the corresponding values
     flux_left = flux_array[mask_left]
     flux_right = flux_array[mask_right]
 
+    
+
     stdDev_left = np.std(flux_left)
     stdDev_right = np.std(flux_right)
+
+    
+
+    stdDev_left = np.std(flux_left)
+    stdDev_right = np.std(flux_right)
+    if np.isnan(stdDev_left):
+        stdDev_left = 0
+    if np.isnan(stdDev_right):
+        stdDev_right = 0
 
     return (stdDev_left + stdDev_right)/2
 #------------------------------------------------
@@ -133,7 +146,12 @@ def compute_line_flux(lamb, flux, region, z):
     
 
             #Flux Uncerainty
-            flux_err = flux_stdDev(lamb.value, flux.value, [r_ini - 50, r_ini], [r_end, r_end+ 50]) 
+            if r_end > 5050 or r_ini < 4900:
+                
+                flux_err = flux_stdDev(lamb.value, flux.value, [r_ini - 50, r_ini], [r_end, r_end+ 50]) 
+            else:
+                flux_err = flux_stdDev(lamb.value, flux.value, [4950 - 50, 4950], [5015, 5015 + 50]) 
+
             flux_err_Jy = flux_err * np.ones(len(flux)) * u.Jy
             flux_uncertainty = StdDevUncertainty(flux_err_Jy)
 
@@ -157,7 +175,7 @@ def compute_line_flux(lamb, flux, region, z):
             l_flux_unc = np.nan
 
 
-    return l_flux, l_flux_unc
+    return l_flux*1e18, l_flux_unc*1e18
 #------------------------------------------------
 #
 #------------------------------------------------        
@@ -184,7 +202,7 @@ def get_line_fluxes(lambda_rest, flux, indx):
 #------------------------------------------------
 #
 #------------------------------------------------            
-def save_line_fluxes(index, plotRegion=None):
+def save_line_fluxes(index, plot=False, plotRegion=False):
     
     
     #Extract file to use as input in compute_EW()
@@ -192,12 +210,13 @@ def save_line_fluxes(index, plotRegion=None):
     mast_file = mast_folder / MAST_files[index]
     z = z_array[index]
 
-    if plotRegion is not None:
+   
+    if plot:
+        plot_spectrum_full(mast_file, jades_file, index)
+
+    if plotRegion:
         region = plotRegion
         plot_spectrum_region(mast_file, jades_file, index, region)
-    
-    
-        plot_spectrum_full(mast_file, jades_file, index)
     
     
     # ===== JADES =====
