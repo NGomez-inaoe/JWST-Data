@@ -22,14 +22,17 @@ ID_array = df["NIRSpec_ID"]
 z_array = df["redshift"]
 JADES_files = df["JADES_FILENAME_F170LP-G235M"]
 MAST_files = df["MAST_FILENAME_F170LP-G235M"]
-Ha_ini_array = df["Ha_ini"]
-Ha_end_array = df["Ha_end"]
-Hb_ini_array = df["Hb_ini"]
-Hb_end_array = df["Hb_end"]
-O3_ini_array = df["[OIII4959]_ini"]
-O3_end_array = df["[OIII4959]_end"]
-o3_ini_array = df["[OIII5007]_ini"]
-o3_end_array = df["[OIII5007]_end"]
+dil = 10
+Ha_ini_array = np.ones(len(ID_array)) * 6563-dil #df["Ha_ini"]
+Ha_end_array = np.ones(len(ID_array)) * 6563+dil #df["Ha_end"]
+Hb_ini_array = np.ones(len(ID_array)) * 4861-dil #df["Hb_ini"]
+Hb_end_array = np.ones(len(ID_array)) * 4861+dil #df["Hb_end"]
+O3_ini_array = np.ones(len(ID_array)) * 4959-dil #df["[OIII4959]_ini"]
+O3_end_array = np.ones(len(ID_array)) * 4959+dil #df["[OIII4959]_end"]
+o3_ini_array = np.ones(len(ID_array)) * 5007-dil #df["[OIII5007]_ini"]
+o3_end_array = np.ones(len(ID_array)) * 5007+dil #df["[OIII5007]_end"]
+N2_ini_array = np.ones(len(ID_array)) * 6583-dil 
+N2_end_array = np.ones(len(ID_array)) * 6583+dil 
 
 #Create arrays to save the data with save_EW()
 ID_data =[]
@@ -42,6 +45,8 @@ mast_O3_data = []
 mast_O3_err_data =[]
 mast_o3_data = []
 mast_o3_err_data =[]
+mast_N2_data = []
+mast_N2_err_data = []
 
 jades_Ha_data = []
 jades_Ha_err_data =[]
@@ -65,26 +70,28 @@ def main():
     LF_data = {
         "ID": ID_data,
         "redshift": z_data,
-        "LF(Ha) MAST": mast_Ha_data,
-        "LF err(Ha) MAST": mast_Ha_err_data,
-        "LF(Ha) JADES": jades_Ha_data,
-        "LF err(Ha) JADES": jades_Ha_err_data,
-        "LF(Hb) MAST": mast_Hb_data,
-        "LF err(Hb) MAST": mast_Hb_err_data,
-        "LF(Hb) JADES": jades_Hb_data,
-        "LF err(Hb) JADES": jades_Hb_err_data,
-        "LF([OIII]4959) MAST": mast_O3_data,
-        "LF err([OIII]4959) MAST": mast_O3_err_data,
-        "LF([OIII]4959) JADES": jades_O3_data,
-        "LF err([OIII]4959) JADES": jades_O3_err_data,
-        "LF([OIII]5007) MAST": mast_o3_data,
-        "LF err([OIII]5007) MAST": mast_o3_err_data,
-        "LF([OIII]5007) JADES": jades_o3_data,
-        "LF err([OIII]5007) JADES": jades_o3_err_data
+        "Flux (Ha 6563) MAST": mast_Ha_data,
+        "F_err(Ha 6563) MAST": mast_Ha_err_data,
+        "Flux (Ha 6563) JADES": jades_Ha_data,
+        "F_err(Ha 6563) JADES": jades_Ha_err_data,
+        "Flux (Hb 4861) MAST": mast_Hb_data,
+        "F_err(Hb 4861) MAST": mast_Hb_err_data,
+        "Flux (Hb 4861) JADES": jades_Hb_data,
+        "F_err(Hb 4861) JADES": jades_Hb_err_data,
+        "Flux ([OIII]4959) MAST": mast_O3_data,
+        "F_err([OIII]4959) MAST": mast_O3_err_data,
+        "Flux ([OIII]4959) JADES": jades_O3_data,
+        "F_err([OIII]4959) JADES": jades_O3_err_data,
+        "Flux ([OIII]5007) MAST": mast_o3_data,
+        "F_err([OIII]5007) MAST": mast_o3_err_data,
+        "Flux ([OIII]5007) JADES": jades_o3_data,
+        "F_err([OIII]5007) JADES": jades_o3_err_data,
+        "Flux ([NII]6583) MAST": mast_N2_data,
+        "F_err([NII]6583) MAST": mast_N2_err_data
     }
     
     LineFlux_df=pd.DataFrame( LF_data)
-    LineFlux_df.to_csv('./Output_data/Line_fluxes_g235m_v3.tsv', sep='\t', index=False)
+    LineFlux_df.to_csv('./Output_data/Line_fluxes_g235m_v4.tsv', sep='\t', index=False)
     
         
 
@@ -165,18 +172,19 @@ def compute_line_flux(lamb, flux, region, z):
             l_flux_unc = np.nan
 
 
-    return l_flux*1e18, l_flux_unc*1e18
+    return np.abs(l_flux*1e18), l_flux_unc*1e18
 #------------------------------------------------
 #
 #------------------------------------------------        
 def get_line_fluxes(lambda_rest, flux, indx):
 
-    #Arrays for the lines
+     #Arrays for the lines
     z = z_array[indx]
     Ha_region = [Ha_ini_array[indx], Ha_end_array[indx] ] 
     Hb_region = [Hb_ini_array[indx], Hb_end_array[indx] ] 
     O3_region = [O3_ini_array[indx], O3_end_array[indx] ]
     o3_region = [o3_ini_array[indx], o3_end_array[indx] ]
+    N2_region = [N2_ini_array[indx], N2_end_array[indx] ]
     
     flux_Jy = flux * u.Jy
     lambda_rest_AA = lambda_rest *u.AA
@@ -186,9 +194,10 @@ def get_line_fluxes(lambda_rest, flux, indx):
     Hb_flux, Hb_flux_unc = compute_line_flux(lambda_rest_AA, flux_Jy, Hb_region, z)
     O3_flux, O3_flux_unc = compute_line_flux(lambda_rest_AA, flux_Jy, O3_region, z)
     o3_flux, o3_flux_unc = compute_line_flux(lambda_rest_AA, flux_Jy, o3_region, z)
+    N2_flux, N2_flux_unc = compute_line_flux(lambda_rest_AA, flux_Jy, N2_region, z)
 
 
-    return Ha_flux, Ha_flux_unc, Hb_flux, Hb_flux_unc, O3_flux, O3_flux_unc, o3_flux, o3_flux_unc
+    return Ha_flux, Ha_flux_unc, Hb_flux, Hb_flux_unc, O3_flux, O3_flux_unc, o3_flux, o3_flux_unc, N2_flux, N2_flux_unc
 #------------------------------------------------
 #
 #------------------------------------------------            
@@ -247,7 +256,7 @@ def save_line_fluxes(index, plot=False, plotRegion=False):
 
     except FileNotFoundError:
         print(f'MAST file for Object {ID_array[index]} not found')
-        mast_fluxes = np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan
+        mast_fluxes = np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan
         pass
 
 
@@ -267,6 +276,9 @@ def save_line_fluxes(index, plot=False, plotRegion=False):
     mast_O3_err_data.append( mast_fluxes[5] )
     mast_o3_data.append(  mast_fluxes[6] )
     mast_o3_err_data.append( mast_fluxes[7] )
+    mast_N2_data.append(  mast_fluxes[8] )
+    mast_N2_err_data.append( mast_fluxes[9] )
+
 
 
     jades_Ha_data.append( jades_fluxes[0] )
