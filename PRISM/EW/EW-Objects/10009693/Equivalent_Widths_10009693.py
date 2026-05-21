@@ -59,9 +59,9 @@ jades_EW_dO_data=[]
 #//////////////////////////////////////
 indx=50
 
-Ha_ini, Ha_end = 6510 *u.AA, 6621*u.AA
-Hb_ini, Hb_end = 4850 *u.AA, 4896 *u.AA
-O_ini, O_end = 4941 *u.AA, 5034 *u.AA
+Ha_ini, Ha_end = 6550 *u.AA, 6610*u.AA
+Hb_ini, Hb_end = 4849 *u.AA, 4880 *u.AA
+O_ini, O_end = 4987 *u.AA, 5034 *u.AA
 #//////////////////////////////////////
 
 
@@ -100,7 +100,7 @@ def main():
   EWD = pd.DataFrame(EW_data)
   folder=objects_folder / f'{ID}'
   EWD.to_csv(f'{folder}/EW_output_{ID}_2.tsv', sep="\t", index=False)
-  EWD.to_csv(f'{output_folder}/EW_output_v6_1.tsv', sep="\t", index=False, mode='a', header=True)
+  #EWD.to_csv(f'{output_folder}/EW_output_v6_1.tsv', sep="\t", index=False, mode='a', header=True)
 
   print(f'Equitalent Widths for obj {ID}, saved!')
   
@@ -190,6 +190,7 @@ def compute_line_EW(lamb, flux, flux_uncertainty, exclusion_regions, line_region
 #Compute the Equivalent Widths for Halpha, Hbeta and [OIII]
 def compute_EWs(lambda_rest, flux):
 
+  flux = flux + 2.5e-21
   
   lambda_rest_Angstrom = lambda_rest *u.AA
   
@@ -200,7 +201,7 @@ def compute_EWs(lambda_rest, flux):
   #//// H alfa
 
   #Uncertainty of the flux
-  flux_err_Ha = flux_stdDev(lambda_rest, flux, Ha_ini.value - 800, Ha_ini.value, Ha_end.value, Ha_end.value + 500 )
+  flux_err_Ha = flux_stdDev(lambda_rest, flux, Ha_ini.value - 1500, Ha_ini.value, Ha_end.value, Ha_end.value + 700 )
   flux_err_Jy = flux_err_Ha * np.ones(len(flux)) * u.Jy
   flux_uncertainty = StdDevUncertainty(flux_err_Jy)
   
@@ -208,13 +209,15 @@ def compute_EWs(lambda_rest, flux):
 
   #  Regions to exlude
   lamb = lambda_rest_Angstrom
-  Ha_left = SpectralRegion(lamb[0], Ha_ini - 850 *u.AA)
+  Ha_left = SpectralRegion(lamb[0], Ha_ini - 1500 *u.AA)
+  Ha_left_new = SpectralRegion(Ha_ini - 1000*u.AA, Ha_ini)
   Ha_region = SpectralRegion(Ha_ini, Ha_end)
-  Ha_region_excl = SpectralRegion(Ha_ini, Ha_end + 150 *u.AA )
-  Ha_right = SpectralRegion(Ha_end + 350 *u.AA, lamb[-1])
+  Ha_region_excl = SpectralRegion(Ha_ini, Ha_end )
+  Ha_right = SpectralRegion(Ha_end + 700 *u.AA, lamb[-1])
   
   
-  Ha_exclusion_regions = [Ha_left, Ha_region_excl, Ha_right]
+  
+  Ha_exclusion_regions = [Ha_left, Ha_region_excl, Ha_right, Ha_left_new]
   
 
   #// Compute EW of Ha //
@@ -228,11 +231,12 @@ def compute_EWs(lambda_rest, flux):
   flux_uncertainty = StdDevUncertainty(flux_err_Jy)
 
   #For Hb and [OIII]
-  Hb_left = SpectralRegion(lamb[0], Hb_ini - 500 *u.AA)
+  Hb_left = SpectralRegion(lamb[0], Hb_ini - 700 *u.AA)
   Hb_region = SpectralRegion(Hb_ini, Hb_end)
   O3_region = SpectralRegion(O_ini, O_end)
-  O3_right = SpectralRegion(O_end + 500 *u.AA, lamb[-1])
-  Hb_exclusion_regions = [Hb_left, Hb_region, O3_region, O3_right]
+  O3_right = SpectralRegion(O_end + 1150 *u.AA, lamb[-1])
+  Line = SpectralRegion(4565 *u.AA, 4626*u.AA)
+  Hb_exclusion_regions = [Hb_left, Hb_region, O3_region, O3_right, Line]
 
   #// Compute EW of Hb and [OIII] //
   Hb_EW, Hb_EW_err = compute_line_EW(lambda_rest_Angstrom, flux_Jy, flux_uncertainty, Hb_exclusion_regions, Hb_region)

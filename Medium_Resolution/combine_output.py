@@ -5,17 +5,32 @@ from pathlib import Path
 
 # Cargar archivos
 
-df2 = pd.read_csv("/home/nicolas/Documents/Research/PhD/JWST-Data/Medium_Resolution/Output_data/Line_fluxes_g395m_v1.tsv", sep='\t')
-df1 = pd.read_csv("/home/nicolas/Documents/Research/PhD/JWST-Data/Medium_Resolution/Output_data/Line_fluxes_g235m_v1.tsv", sep='\t')
-df1 = pd.read_csv("/home/nicolas/Documents/Research/PhD/JWST-Data/Medium_Resolution/Output_data/Line_fluxes_g140m_v1.tsv", sep='\t')
+df1 = pd.read_csv("/home/nicolas/Documents/Research/PhD/JWST-Data/Medium_Resolution/Output_data/Line_fluxes_g395m_v4.tsv", sep='\t')
+df2 = pd.read_csv("/home/nicolas/Documents/Research/PhD/JWST-Data/Medium_Resolution/Output_data/Line_fluxes_g235m_v4.tsv", sep='\t')
+#df3 = pd.read_csv("/home/nicolas/Documents/Research/PhD/JWST-Data/Medium_Resolution/Output_data/Line_fluxes_g140m_v4.tsv", sep='\t')
 
 
 # Columnas comunes que identifican cada fila
 fix_columns = ["ID", "redshift"]
 # Columnas que quieres combinar
-combine_cols = ["LF(Ha) MAST", "LF err(Ha) MAST", "LF(Ha) JADES", "LF err(Ha) JADES", "LF(Hb) MAST","LF err(Hb) MAST",
-                "LF(Hb) JADES","LF err(Hb) JADES","LF([OIII]4959) MAST","LF err([OIII]4959) MAST","LF([OIII]4959) JADES",
-                "LF err([OIII]4959) JADES","LF([OIII]5007) MAST","LF err([OIII]5007) MAST","LF([OIII]5007) JADES","LF err([OIII]5007) JADES"]
+combine_cols = ["Flux (Ha 6563) MAST",
+        "F_err(Ha 6563) MAST",
+        "Flux (Ha 6563) JADES",
+        "F_err(Ha 6563) JADES",
+        "Flux (Hb 4861) MAST",
+        "F_err(Hb 4861) MAST",
+        "Flux (Hb 4861) JADES",
+        "F_err(Hb 4861) JADES",
+        "Flux ([OIII]4959) MAST",
+        "F_err([OIII]4959) MAST",
+        "Flux ([OIII]4959) JADES",
+        "F_err([OIII]4959) JADES",
+        "Flux ([OIII]5007) MAST",
+        "F_err([OIII]5007) MAST",
+        "Flux ([OIII]5007) JADES",
+        "F_err([OIII]5007) JADES",
+        "Flux ([NII]6583) MAST",
+        "F_err([NII]6583) MAST"]
 
 # Unir los dos dataframes por las columnas clave
 df_merge = df1.merge(
@@ -28,7 +43,7 @@ df_merge = df1.merge(
 # Función para combinar dos valores
 def combinar_valores(a, b):
     if pd.notna(a) and pd.notna(b):
-        return (a + b) / 2
+        return b
     elif pd.notna(a):
         return a
     elif pd.notna(b):
@@ -47,6 +62,6 @@ for col in combine_cols:
     )
 
 # Guardar resultado
-df_final.to_csv("Output_data/Line_fluxes_combined.tsv", sep='\t', index=False)
+df_final.to_csv("Output_data/Line_fluxes_combined_v4.tsv", sep='\t', index=False)
 
 print(df_final)

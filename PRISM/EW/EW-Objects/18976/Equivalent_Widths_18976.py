@@ -59,7 +59,7 @@ jades_EW_dO_data=[]
 #//////////////////////////////////////
 indx=37
 
-Ha_ini, Ha_end = 6549 *u.AA, 6590 *u.AA
+Ha_ini, Ha_end = 6542 *u.AA, 6586 *u.AA
 Hb_ini, Hb_end = 4838 *u.AA, 4881 *u.AA
 O_ini, O_end = 4931 *u.AA, 5036 *u.AA
 #//////////////////////////////////////
@@ -100,7 +100,7 @@ def main():
   EWD = pd.DataFrame(EW_data)
   folder=objects_folder / f'{ID}'
   EWD.to_csv(f'{folder}/EW_output_{ID}_2.tsv', sep="\t", index=False)
-  EWD.to_csv(f'{output_folder}/EW_output_v6_1.tsv', sep="\t", index=False, mode='a', header=False)
+  #EWD.to_csv(f'{output_folder}/EW_output_v6_1.tsv', sep="\t", index=False, mode='a', header=False)
 
   print(f'Equitalent Widths for obj {ID}, saved!')
   
@@ -208,10 +208,10 @@ def compute_EWs(lambda_rest, flux):
 
   #  Regions to exlude
   lamb = lambda_rest_Angstrom
-  Ha_left = SpectralRegion(lamb[0], Ha_ini - 500 *u.AA)
+  Ha_left = SpectralRegion(lamb[0], Ha_ini - 1000 *u.AA)
   Ha_region = SpectralRegion(Ha_ini, Ha_end)
-  Ha_region_excl = SpectralRegion(Ha_ini, Ha_end + 150 *u.AA )
-  Ha_right = SpectralRegion(Ha_end + 350 *u.AA, lamb[-1])
+  Ha_region_excl = SpectralRegion(Ha_ini, Ha_end + 450 *u.AA )
+  Ha_right = SpectralRegion(Ha_end + 450 *u.AA, lamb[-1])
   Ha_exclusion_regions = [Ha_left, Ha_region_excl, Ha_right]
 
   #// Compute EW of Ha //

@@ -59,7 +59,7 @@ jades_EW_dO_data=[]
 #//////////////////////////////////////
 indx=62
 
-Ha_ini, Ha_end = 6530 *u.AA, 6596 *u.AA
+Ha_ini, Ha_end = 6538 *u.AA, 6595 *u.AA
 Hb_ini, Hb_end = 4818*u.AA, 4897 *u.AA
 O_ini, O_end = 4934 *u.AA, 5042 *u.AA
 #//////////////////////////////////////
@@ -100,7 +100,7 @@ def main():
   EWD = pd.DataFrame(EW_data)
   folder=objects_folder / f'{ID}'
   EWD.to_csv(f'{folder}/EW_output_{ID}_2.tsv', sep="\t", index=False)
-  EWD.to_csv(f'{output_folder}/EW_output_v6_1.tsv', sep="\t", index=False, mode='a', header=True)
+  #EWD.to_csv(f'{output_folder}/EW_output_v6_1.tsv', sep="\t", index=False, mode='a', header=False)
 
   print(f'Equitalent Widths for obj {ID}, saved!')
   
@@ -200,7 +200,7 @@ def compute_EWs(lambda_rest, flux):
   #//// H alfa
 
   #Uncertainty of the flux
-  flux_err_Ha = flux_stdDev(lambda_rest, flux, Ha_ini.value - 800, Ha_ini.value, Ha_end.value, Ha_end.value + 500 )
+  flux_err_Ha = flux_stdDev(lambda_rest, flux, Ha_ini.value - 1000, Ha_ini.value, Ha_end.value, Ha_end.value + 500 )
   flux_err_Jy = flux_err_Ha * np.ones(len(flux)) * u.Jy
   flux_uncertainty = StdDevUncertainty(flux_err_Jy)
   
@@ -208,7 +208,7 @@ def compute_EWs(lambda_rest, flux):
 
   #  Regions to exlude
   lamb = lambda_rest_Angstrom
-  Ha_left = SpectralRegion(lamb[0], Ha_ini - 1100 *u.AA)
+  Ha_left = SpectralRegion(lamb[0], Ha_ini - 1400 *u.AA)
   Ha_region = SpectralRegion(Ha_ini, Ha_end)
   Ha_region_excl = SpectralRegion(Ha_ini, Ha_end + 150 *u.AA )
   Ha_right = SpectralRegion(Ha_end + 700 *u.AA, lamb[-1])

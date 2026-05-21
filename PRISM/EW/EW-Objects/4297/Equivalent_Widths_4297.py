@@ -59,7 +59,7 @@ jades_EW_dO_data=[]
 #//////////////////////////////////////
 indx=6
 
-Ha_ini, Ha_end = 6543 *u.AA, 6585 *u.AA
+Ha_ini, Ha_end = 6550 *u.AA, 6585 *u.AA
 Hb_ini, Hb_end = 4841 *u.AA, 4882 *u.AA
 O_ini, O_end = 4932 *u.AA, 5031 *u.AA
 #//////////////////////////////////////
@@ -208,7 +208,7 @@ def compute_EWs(lambda_rest, flux):
 
   #  Regions to exlude
   lamb = lambda_rest_Angstrom
-  Ha_left = SpectralRegion(lamb[0], Ha_ini - 1100 *u.AA)
+  Ha_left = SpectralRegion(lamb[0], Ha_ini - 1300 *u.AA)
   Ha_region = SpectralRegion(Ha_ini, Ha_end)
   Ha_region_excl = SpectralRegion(Ha_ini, Ha_end + 150 *u.AA )
   Ha_right = SpectralRegion(Ha_end + 350 *u.AA, lamb[-1])
