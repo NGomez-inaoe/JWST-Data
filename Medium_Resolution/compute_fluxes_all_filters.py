@@ -62,8 +62,8 @@ var_map = {
 filters = {
     "G235M": ("JADES_FILENAME_F170LP-G235M", "MAST_FILENAME_F170LP-G235M"),
     #"G235H": ("JADES_FILENAME_F170LP-G235H", "MAST_FILENAME_F170LP-G235H"),
-    #"G395M": ("JADES_FILENAME_F290LP-G395M", "MAST_FILENAME_F290LP-G395M"),
-    #"G395H": ("JADES_FILENAME_F290LP-G395H", "MAST_FILENAME_F290LP-G395H"),
+    "G395M": ("JADES_FILENAME_F290LP-G395M", "MAST_FILENAME_F290LP-G395M"),
+    "G395H": ("JADES_FILENAME_F290LP-G395H", "MAST_FILENAME_F290LP-G395H"),
 }
 
 
@@ -103,30 +103,29 @@ def main():
     
     
     for filter_label, (jcol, mcol) in filters.items():
-        globals()["JADES_files"] = df[jcol]
-        globals()["MAST_files"] = df[mcol]
-       
+        _reset_result_lists()
         
         for index in range(len(ID_array)):
             save_line_fluxes(index, filter_label=filter_label)
-
         
-
-    """
-    
         for source in ("MAST", "JADES"):
+            
             for line, label in line_label_map.items():
+                
                 flux_var, err_var, dline_var = var_map[source][line]
+                
+                
                 combined[f"Flux ({label}) {source} {filter_label}"] = globals()[flux_var]
                 combined[f"F_err({label}) {source} {filter_label}"] = globals()[err_var]
-                combined[f"Optimal dline ({label}) {source} {filter_label}"] = globals()[dline_var]
+                #combined[f"Optimal dline ({label}) {source} {filter_label}"] = globals()[dline_var]
 
+    
     out_df = pd.DataFrame(combined)
     out_path = output_dir / output_name
     out_df.to_csv(out_path, sep="\t", index=False)
     print(f"Saved line fluxes to {out_path}")
     
-    """
+    
     
 
 
@@ -176,10 +175,12 @@ def compute_line_flux(lamb, flux, region, z):
         if np.isfinite(r_ini) and np.isfinite(r_end):
 
             #Flux Uncerainty
-            if r_end > 5050 or r_ini < 4900:
-                flux_err = flux_stdDev(lamb.value, flux.value, [r_ini - 50, r_ini], [r_end, r_end + 50]) 
+            if r_ini < 4900:
+                flux_err = flux_stdDev(lamb.value, flux.value, [4800, 4850], [4870, 4920]) 
+            if r_ini > 6500: 
+                flux_err = flux_stdDev(lamb.value, flux.value, [6500, 6550], [6600, 6650])
             else:
-                flux_err = flux_stdDev(lamb.value, flux.value, [4950 - 50, 4950], [5015, 5015 + 50]) 
+                flux_err = flux_stdDev(lamb.value, flux.value, [4900, 4950], [5020, 5070]) 
 
             flux_err_Jy = flux_err * np.ones(len(flux)) * u.Jy
             flux_uncertainty = StdDevUncertainty(flux_err_Jy)
@@ -211,7 +212,7 @@ def compute_line_flux(lamb, flux, region, z):
 #
 #------------------------------------------------  
 def compute_significance(flux, flux_err):
-    sigmas = [ np.abs ( flux[i] - flux[i+1] ) / np.sqrt( flux_err[i]**2 + flux_err[i+1]**2 ) for i in range(len(flux)-1)]
+    sigmas = [ np.abs ( flux[i] - flux[i+1] ) / np.sqrt( flux_err[i]**2 ) for i in range(len(flux)-1)]
     return sigmas
 
 def _line_regions_for_dline(dline):
@@ -233,7 +234,11 @@ def compute_line_fluxes_for_dline(lambda_rest, flux, z, dline):
     return line_fluxes
 #------------------------------------------------
 #
-#------------------------------------------------            
+#------------------------------------------------         
+def _reset_result_lists():
+    for name in _result_list_names:
+        globals()[name] = []
+    
 def _get_spectrum_path(index, source="JADES", filter_label="G235M"):
     if filter_label not in filters:
         raise ValueError(f"Unknown filter_label: {filter_label}")
@@ -241,8 +246,10 @@ def _get_spectrum_path(index, source="JADES", filter_label="G235M"):
 
     if source == "JADES":
         filename = df[jcol].iat[index]
+        print("JADES:\t", filename, '\n')
     elif source == "MAST":
         filename = df[mcol].iat[index]
+        print("MAST:\t", filename, '\n')
     else:
         raise ValueError(f"Unknown source: {source}")
 
@@ -257,6 +264,7 @@ def compute_flux_evolution_for_source(index, source='JADES', filter_label='G235M
         with fits.open(spec_file) as f:
             specdata = f[1].data
     except FileNotFoundError:
+        print(f"File not found: {spec_file}")
         return None
 
     flux = specdata['FLUX']
@@ -290,6 +298,7 @@ def compute_optimal_fluxes_for_source(index, source='JADES', filter_label='G235M
                                       threshold=1.0, min_dline=4.0):
     result = compute_flux_evolution_for_source(index, source, filter_label, start, stop, step)
     line_names = ['Ha', 'Hb', 'N2', 'O3', 'o3']
+    
     if result is None:
         return {
             line: {'dline': np.nan, 'flux': np.nan, 'flux_err': np.nan}
@@ -304,6 +313,10 @@ def compute_optimal_fluxes_for_source(index, source='JADES', filter_label='G235M
             threshold=threshold, min_dline=min_dline
         )
         optimal[line] = {'dline': dline, 'flux': flx, 'flux_err': ferr}
+        print(f"Optimal for {line} ({source} {filter_label}): dline={dline}, flux={flx}, err={ferr}")
+
+    print("---------------------------------------------")
+
     return optimal
 #------------------------------------------------
 #
@@ -359,7 +372,7 @@ def save_line_fluxes(index, filter_label='G235M'):
     jades_opt = compute_optimal_fluxes_for_source(index, source="JADES", filter_label=filter_label)
     mast_opt = compute_optimal_fluxes_for_source(index, source="MAST", filter_label=filter_label)
 
-    """
+
     mast_Ha_data.append(mast_opt['Ha']['flux'] * (1 + z))
     mast_Ha_err_data.append(mast_opt['Ha']['flux_err'] * (1 + z))
     mast_Ha_dline_data.append(mast_opt['Ha']['dline'])
@@ -400,9 +413,10 @@ def save_line_fluxes(index, filter_label='G235M'):
     jades_N2_err_data.append(jades_opt['N2']['flux_err'] * (1 + z))
     jades_N2_dline_data.append(jades_opt['N2']['dline'])
 
-    print(f"Saved optimal dline fluxes for ID={ID_array[index]} (z={z})")
+    print(f"Saved optimal dline fluxes for ID={ID_array[index]} (z={z})", '\n',
+          '================================================================================================')
 
-    """
+    
 #==================================================
 #/// //// //// //// //// //// ///// //// //// /////
 #==================================================
