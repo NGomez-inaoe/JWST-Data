@@ -1,4 +1,3 @@
-from operator import index
 import warnings
 import numpy as np
 import pandas as pd
@@ -255,7 +254,7 @@ def _get_spectrum_path(index, source="JADES", filter_label="G235M"):
 
     return folder_map[filter_label][source] / filename
 
-def compute_flux_evolution_for_source(index, source='JADES', filter_label='G235M', start=3.0, stop=15.0, step=0.5):
+def compute_flux_evolution_for_source(index, source='JADES', filter_label='G235M', start=3.0, stop=10.0, step=0.5):
     
     
     spec_file = _get_spectrum_path(index, source, filter_label)
@@ -417,9 +416,9 @@ def save_line_fluxes(index, filter_label='G235M'):
           '================================================================================================')
 
     
-#==================================================
-#/// //// //// //// //// //// ///// //// //// /////
-#==================================================
+#=============================================================================================================================#
+#/////////////////////////////////////////////////////    \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\#
+#=============================================================================================================================#
 main()
 
 
