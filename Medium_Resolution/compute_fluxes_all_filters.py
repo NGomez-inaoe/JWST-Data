@@ -19,7 +19,9 @@ jades_folder_mr = medium_res_folder / 'JADES'
 mast_folder_mr = medium_res_folder/ 'MAST'
 jades_folder_hr = high_res_folder / 'JADES'
 mast_folder_hr = high_res_folder/ 'MAST'
-
+output_name="Line_fluxes_all_filters.tsv"
+output_dir=Path(source/ "Medium_Resolution/Output_data")
+    
 
 
 #Extract data with Pandas
@@ -27,11 +29,6 @@ df = pd.read_csv("list_of_candidates.tsv", sep='\t')
 ID_array = df["NIRSpec_ID"]
 z_array = df["redshift"]
 #Maps for line labels and variable names
-combined = {
-    "ID": list(ID_array),
-    "redshift": list(z_array),
-}
-
 line_label_map = {
     "Ha": "Ha 6563",
     "Hb": "Hb 4861",
@@ -59,10 +56,10 @@ var_map = {
 
 
 filters = {
-    "G235M": ("JADES_FILENAME_F170LP-G235M", "MAST_FILENAME_F170LP-G235M"),
+    "G235M": ("JADES_FILENAME_G235M", "MAST_FILENAME_G235M"),
     #"G235H": ("JADES_FILENAME_F170LP-G235H", "MAST_FILENAME_F170LP-G235H"),
-    "G395M": ("JADES_FILENAME_F290LP-G395M", "MAST_FILENAME_F290LP-G395M"),
-    "G395H": ("JADES_FILENAME_F290LP-G395H", "MAST_FILENAME_F290LP-G395H"),
+    "G395M": ("JADES_FILENAME_G395M", "MAST_FILENAME_G395M"),
+    "G395H": ("JADES_FILENAME_G395H", "MAST_FILENAME_G395H"),
 }
 
 
@@ -93,20 +90,30 @@ _result_list_names = [
 def main():
 
     
-    output_name="Line_fluxes_all_filters.tsv"
-    output_dir=Path("./Output_data")
+    combined = {
+        "ID": list(ID_array),
+        "redshift": list(z_array),
+    }
     
     
     for name in _result_list_names:
         globals()[name] = []
     
     
+    
+    
     for filter_label, (jcol, mcol) in filters.items():
         _reset_result_lists()
-        
-        for index in range(len(ID_array)):
+
+
+    
+        for index in range(63):
+    
             save_line_fluxes(index, filter_label=filter_label)
-        
+
+
+
+    
         for source in ("MAST", "JADES"):
             
             for line, label in line_label_map.items():
@@ -116,10 +123,12 @@ def main():
                 
                 combined[f"Flux ({label}) {source} {filter_label}"] = globals()[flux_var]
                 combined[f"F_err({label}) {source} {filter_label}"] = globals()[err_var]
-                #combined[f"Optimal dline ({label}) {source} {filter_label}"] = globals()[dline_var]
+                combined[f"Optimal dline ({label}) {source} {filter_label}"] = globals()[dline_var]
 
     
+    
     out_df = pd.DataFrame(combined)
+              
     out_path = output_dir / output_name
     out_df.to_csv(out_path, sep="\t", index=False)
     print(f"Saved line fluxes to {out_path}")
@@ -293,7 +302,7 @@ def compute_flux_evolution_for_source(index, source='JADES', filter_label='G235M
 #
 #------------------------------------------------
 def compute_optimal_fluxes_for_source(index, source='JADES', filter_label='G235M',
-                                      start=3.0, stop=15.0, step=0.5,
+                                      start=3.0, stop=10.0, step=0.5,
                                       threshold=1.0, min_dline=4.0):
     result = compute_flux_evolution_for_source(index, source, filter_label, start, stop, step)
     line_names = ['Ha', 'Hb', 'N2', 'O3', 'o3']
@@ -307,12 +316,25 @@ def compute_optimal_fluxes_for_source(index, source='JADES', filter_label='G235M
     dlines, flux_history, err_history = result
     optimal = {}
     for line in line_names:
+
+        if flux_history[line][-1]==flux_history[line][0]:
+            print(f"Warning: No flux evolution for {line} in {source} {filter_label}. Returning first dline value.")
+            optimal[line] = {'dline': dlines[-1], 'flux': np.NaN, 'flux_err': np.NaN}
+            continue
+        
         dline, flx, ferr = find_optimal_dline_from_history(
             dlines, flux_history[line], err_history[line],
             threshold=threshold, min_dline=min_dline
         )
         optimal[line] = {'dline': dline, 'flux': flx, 'flux_err': ferr}
-        print(f"Optimal for {line} ({source} {filter_label}): dline={dline}, flux={flx}, err={ferr}")
+        if line == 'N2' and optimal['N2']['dline'] > 5.0:
+            optimal['N2']['dline'] = 5.0
+            optimal['N2']['flux'] = flux_history[line][0]
+            optimal['N2']['flux_err'] = err_history[line][0] 
+
+        
+                
+        print(f"Optimal for {line} ({source} {filter_label}): dline={optimal[line]['dline']}, flux={optimal[line]['flux']}, err={optimal[line]['flux_err']}")
 
     print("---------------------------------------------")
 
