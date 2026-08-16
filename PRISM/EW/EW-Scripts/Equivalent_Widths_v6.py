@@ -1,8 +1,10 @@
 """
   This version implements uncertainties from the distribution of the spectrum itself around the lines
   with the std deviation of the flux values, instead of extracting directly from the .fits file.
-  Another chane is the computation of the EW for each line with a single function.
+  Another change is the computation of the EW for each line with a single function.
   Date: March 8th
+
+  Plotting functions are removed in this version. 
 """
 
 from specutils.fitting import fit_generic_continuum

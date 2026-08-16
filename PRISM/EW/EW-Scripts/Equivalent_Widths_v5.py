@@ -2,6 +2,8 @@
 in this new version: Equivalent widths are calculated
 taking only the continuum around the lines of interes intead to the whole
 spectrum
+Uncertainties are included in this version, they are obtained directly from the header and propagated with internal
+specutils functions. 
 """
 from specutils.fitting import fit_generic_continuum
 from specutils.analysis import equivalent_width
@@ -560,4 +562,4 @@ def save_spectra(index):
 #//////    End of Functions    //////
 #////////////////////////////////////
 
-main()
+#main()

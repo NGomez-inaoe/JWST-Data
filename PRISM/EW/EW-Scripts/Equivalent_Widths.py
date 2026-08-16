@@ -1,3 +1,8 @@
+"""
+Additional attempt between versions 5 and 6. Nothing special about this one.
+"""
+
+
 from specutils.fitting import fit_generic_continuum
 from specutils.analysis import equivalent_width
 from astropy.nddata import StdDevUncertainty
@@ -10,6 +15,7 @@ from astropy.io import fits
 from pathlib import Path
 import pandas as pd
 import warnings
+
 
 
 #Define source path where the files are

@@ -1,10 +1,9 @@
 """
-  This version implements uncertainties from the distribution of the spectrum itself around the lines
-  with the std deviation of the flux values, instead of extracting directly from the .fits file.
-  Another change is the computation of the EW for each line with a single function.
-  Slightly modified to include the option to save the output in a single file or in individual files for each object, 
-  plus other minor changes.
+Computes data only for MAST. 
+Lines are defined according to redshift range.
 """
+
+
 
 from specutils.fitting import fit_generic_continuum
 from specutils.analysis import equivalent_width
@@ -24,7 +23,6 @@ import warnings
 #Define source path where the files are
 source=Path("/home/nicolas/Documents/Research/PhD/JWST-Data/PRISM/")
 mast_folder=source / "Spectra1D/MAST"
-jades_folder=source / "Spectra1D/JADES"
 output_folder=source / "EW/EW-Data-Output"
 plots_folder=source / "EW/EW-Plots"
 objects_folder=source / "EW/EW-Objects"
@@ -32,7 +30,6 @@ objects_folder=source / "EW/EW-Objects"
 #Extract data with Pandas
 df = pd.read_csv("short-table.tsv", sep='\t')
 ID_array = df["NIRSpec_ID"]
-JADES_files = df["JADES_FILENAME"]
 MAST_files = df["MAST_FILENAME"]
 z_array = df["redshift"]
 
@@ -46,31 +43,14 @@ mast_EW_dHb_data =[]
 mast_EW_O_data = []
 mast_EW_dO_data =[]
 
-jades_EW_Ha_data = []
-jades_EW_dHa_data =[]
-jades_EW_Hb_data = []
-jades_EW_dHb_data= []
-jades_EW_O_data =[]
-jades_EW_dO_data=[]
-
-
-
-#Define Spectral Regions for the emission lines: this is the region
-#we edit
-#//////////////////////////////////////
-indx=5
-
-Ha_ini, Ha_end = 6520 *u.AA, 6605 *u.AA
-Hb_ini, Hb_end = 4818*u.AA, 4897 *u.AA
-O_ini, O_end = 4934 *u.AA, 5042 *u.AA
-#//////////////////////////////////////
-
-
 def main():
 
 
-  #Save EW estimate
-  save_EW(indx)
+  for indx in range(len(ID_array)):
+    
+
+    #Save EW estimate
+    save_EW(indx)
 
 
   #Save data in data frame
@@ -79,31 +59,20 @@ def main():
       "redshift": z_data,
       "EW(Ha) MAST": mast_EW_Ha_data,
       "DEW(Ha) MAST": mast_EW_dHa_data,
-      "EW(Ha) JADES": jades_EW_Ha_data,
-      "DEW(Ha) JADES": jades_EW_dHa_data,
       "EW(Hb) MAST": mast_EW_Hb_data,
       "DEW(Hb) MAST": mast_EW_dHb_data,
-      "EW(Hb) JADES": jades_EW_Hb_data,
-      "DEW(Hb) JADES": jades_EW_dHb_data,
       "EW([OIII]) MAST": mast_EW_O_data,
-      "EW([OIII]) unc MAST": mast_EW_dO_data,
-      "EW([OIII]) JADES": jades_EW_O_data,
-      "EW([OIII]) unc JADES": jades_EW_dO_data,
-      "Ha_ini": Ha_ini.value,
-      "Ha_end": Ha_end.value,
-      "Hb_ini": Hb_ini.value,
-      "Hb_end": Hb_end.value,
-      "[OIII]_ini": O_ini.value,
-      "[OIII]_end": O_end.value
+      "EW([OIII]) unc MAST": mast_EW_dO_data
     }
 
-  ID = ID_array[indx]
+  
   EWD = pd.DataFrame(EW_data)
-  folder=objects_folder / f'{ID}'
-  EWD.to_csv(f'{folder}/EW_output_{ID}_2.tsv', sep="\t", index=False)
-  EWD.to_csv(f'{output_folder}/EW_output_v6_1.tsv', sep="\t", index=False, mode='a', header=False)
+  
+  EWD.to_csv(f'{output_folder}/EW_output_v8.tsv', sep="\t", index=False, mode='a', header=True)
 
-  print(f'Equitalent Widths for obj {ID}, saved!')
+
+
+  print(f'Equitalent Widths saved!')
   
 
 
@@ -189,11 +158,10 @@ def compute_line_EW(lamb, flux, flux_uncertainty, exclusion_regions, line_region
 
 
 #Compute the Equivalent Widths for Halpha, Hbeta and [OIII]
-def compute_EWs(lambda_rest, flux):
+def compute_EWs(lambda_rest, flux, lines_lim):
 
-  
+  Ha_ini, Ha_end, Hb_ini, Hb_end, O_ini, O_end = lines_lim
   lambda_rest_Angstrom = lambda_rest *u.AA
-  
   flux_Jy = flux * u.Jy
 
   #/////////// Equivalent Widths ////////////
@@ -201,7 +169,7 @@ def compute_EWs(lambda_rest, flux):
   #//// H alfa
 
   #Uncertainty of the flux
-  flux_err_Ha = flux_stdDev(lambda_rest, flux, Ha_ini.value - 800, Ha_ini.value, Ha_end.value, Ha_end.value + 500 )
+  flux_err_Ha = flux_stdDev(lambda_rest, flux, Ha_ini.value - 500, Ha_ini.value, Ha_end.value, Ha_end.value + 500 )
   flux_err_Jy = flux_err_Ha * np.ones(len(flux)) * u.Jy
   flux_uncertainty = StdDevUncertainty(flux_err_Jy)
   
@@ -209,15 +177,11 @@ def compute_EWs(lambda_rest, flux):
 
   #  Regions to exlude
   lamb = lambda_rest_Angstrom
-  Ha_left = SpectralRegion(lamb[0], Ha_ini - 1100 *u.AA)
+  Ha_left = SpectralRegion(lamb[0], Ha_ini - 500 *u.AA)
   Ha_region = SpectralRegion(Ha_ini, Ha_end)
   Ha_region_excl = SpectralRegion(Ha_ini, Ha_end + 150 *u.AA )
-  Ha_right = SpectralRegion(Ha_end + 700 *u.AA, lamb[-1])
-  HeliumRegion = SpectralRegion(6938 *u.AA, 6995 *u.AA)
-  
-  
-  Ha_exclusion_regions = [Ha_left, Ha_region_excl, Ha_right, HeliumRegion]
-  
+  Ha_right = SpectralRegion(Ha_end + 350 *u.AA, lamb[-1])
+  Ha_exclusion_regions = [Ha_left, Ha_region_excl, Ha_right]
 
   #// Compute EW of Ha //
   Ha_EW, Ha_EW_err = compute_line_EW(lambda_rest_Angstrom, flux_Jy, flux_uncertainty, Ha_exclusion_regions, Ha_region)
@@ -241,33 +205,13 @@ def compute_EWs(lambda_rest, flux):
   O3_EW, O3_EW_err = compute_line_EW(lambda_rest_Angstrom, flux_Jy, flux_uncertainty, Hb_exclusion_regions, O3_region)
   
   
-
   return Ha_EW, Ha_EW_err, Hb_EW, Hb_EW_err, O3_EW, O3_EW_err
 
 
 
 #Use the codes above for the given MAST and JADES file
-def EquivalentWidths(mast_file, jades_file, z):
-
-
-  with fits.open(jades_file) as j_f:
-    specdata=j_f[1].data
-
-    #Extract and convert flux from working units to Jy
-    flux_erg = specdata['FLUX'] #flux in erg cm-2 s-1 AA-1'
-    mask = np.isfinite(flux_erg)
-    flux_erg = flux_erg[mask]
-    
-  
-
-    #Compute rest wavelength
-    lambda_obs = specdata['WAVELENGTH'] * 1e-6 / 1e-10 #convert from um to AA.
-    lambda_rest = lambda_obs[mask] / (1.+float(z))
-
-    flux = flux_erg * lambda_obs[mask]**2 / 2.99792458e-5
-    
-    jades_EW = compute_EWs(lambda_rest, flux)
-  
+def EquivalentWidths(mast_file, z, ID, lines_limits):
+ 
     
   try:
     with fits.open(mast_file) as m_f:
@@ -285,45 +229,74 @@ def EquivalentWidths(mast_file, jades_file, z):
       lambda_obs = specdata['WAVELENGTH'] * 1e-6 / 1e-10 #convert from um to AA.
       lambda_rest = lambda_obs[mask] / (1.+float(z))
     
-      mast_EW = compute_EWs(lambda_rest, flux)
+      mast_EW = compute_EWs(lambda_rest, flux, lines_limits)
     
   except FileNotFoundError:
-    print(f'MAST file for Object {ID_array[indx]} not found')  
+    print(f'MAST file for Object {ID} not found')  
     mast_EW = np.nan, np.nan, np.nan, np.nan, np.nan, np.nan
     pass
 
-  return mast_EW, jades_EW
+  return mast_EW
 
 def save_EW(index):
 
-    #Extract file to use as input in compute_EW()
-    jades_file = jades_folder / JADES_files[index]
-    mast_file = mast_folder / MAST_files[index]
-    z = z_array[index]
-
-    mast_output, jades_output = EquivalentWidths(mast_file, jades_file, z)
+  #Extract file to use as input in compute_EW()
+  mast_file = mast_folder / MAST_files[index]
+  z = z_array[index]
+  ID = ID_array[index]
 
 
-    #Save output appending to arrays
-    ID_data.append(ID_array[index])
-    z_data.append(z_array[index])
+  if z >= 7:
+    Ha_ini = 6542 *u.AA
+    Ha_end = 6569 *u.AA
+    Hb_ini = 4815 *u.AA
+    Hb_end = 4890 *u.AA
+    O_ini = 4923 *u.AA
+    O_end = 5045 *u.AA
 
-    mast_EW_Ha_data.append( mast_output[0] )
-    mast_EW_dHa_data.append(mast_output[1] )
-    mast_EW_Hb_data.append( mast_output[2] )
-    mast_EW_dHb_data.append(mast_output[3] )
-    mast_EW_O_data.append(  mast_output[4] )
-    mast_EW_dO_data.append( mast_output[5] )
+  elif z >= 5: 
+    Ha_ini = 6527 *u.AA
+    Ha_end = 6604 *u.AA
+    Hb_ini = 4800 *u.AA
+    Hb_end = 4891 *u.AA
+    O_ini = 4923 *u.AA
+    O_end = 5052 *u.AA
 
-    jades_EW_Ha_data.append( jades_output[0] )
-    jades_EW_dHa_data.append(jades_output[1] )
-    jades_EW_Hb_data.append( jades_output[2] )
-    jades_EW_dHb_data.append(jades_output[3] )
-    jades_EW_O_data.append(  jades_output[4] )
-    jades_EW_dO_data.append( jades_output[5] )
+  elif z >= 3: 
+    Ha_ini = 6509 *u.AA
+    Ha_end = 6617 *u.AA
+    Hb_ini = 4800 *u.AA
+    Hb_end = 4889 *u.AA
+    O_ini = 4916 *u.AA
+    O_end = 5064 *u.AA
 
-#////////////////////////////////////
+  else:
+    Ha_ini = 6530 *u.AA
+    Ha_end = 6525 *u.AA
+    Hb_ini = 4790 *u.AA
+    Hb_end = 4880 *u.AA
+    O_ini = 4910 *u.AA
+    O_end = 5070 *u.AA
+  
+  lines_limits = [Ha_ini, Ha_end, Hb_ini, Hb_end, O_ini, O_end]
+  
+
+  mast_output = EquivalentWidths(mast_file, z, ID, lines_limits)
+
+
+  #Save output appending to arrays
+  ID_data.append(ID_array[index])
+  z_data.append(z_array[index])
+
+  mast_EW_Ha_data.append( mast_output[0] )
+  mast_EW_dHa_data.append(mast_output[1] )
+  mast_EW_Hb_data.append( mast_output[2] )
+  mast_EW_dHb_data.append(mast_output[3] )
+  mast_EW_O_data.append(  mast_output[4] )
+  mast_EW_dO_data.append( mast_output[5] )
+
+#====================================
 #//////    End of Functions    //////
-#////////////////////////////////////
+#====================================
 
 main()

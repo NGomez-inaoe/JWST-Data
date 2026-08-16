@@ -1,4 +1,6 @@
-"""This Version includes plotting functions to show the continuum fitting. Uncertainties are not included in this version. Window of integration is fixed for all objects"""
+""""
+This version implements the loop to compute the EW for all the objects in the list. Uncertainties are not included in this version.
+"""
 
 
 
@@ -23,8 +25,8 @@ jades_folder=source / "Spectra1D/JADES"
 output_folder=source / "EW/EW-Data-Output"
 plots_folder=source / "EW/EW-Plots"
 
+#Extract data with Pandas
 df = pd.read_csv("short-table.tsv", sep='\t')
-
 ID_array = df["NIRSpec_ID"]
 JADES_files = df["JADES_FILENAME"]
 MAST_files = df["MAST_FILENAME"]
@@ -42,47 +44,64 @@ jades_EW_Hb_data = []
 mast_EW_O_data = []
 jades_EW_O_data = []
 
-lamb_ini = 2000 * u.AA
-#For this object we also exclude final regions:
-lamb_end = 1 * u.AA
+lamb_ini = 2200 * u.AA
+lamb_end = 1200 * u.AA
+
 
 def main():
 
 
     #Execute the functions
 
-      
-
-    #Save EW estimate
-    n = 4
-    save_EW(n)
-
-    
-    EW_data = {
-        "ID": ID_data,
-        "redshift": z_data,
-        "EW(Ha) MAST": mast_EW_Ha_data,
-        "EW(Ha) JADES": jades_EW_Ha_data,
-        "EW(Hb) MAST": mast_EW_Hb_data,
-        "EW(Hb) JADES": jades_EW_Hb_data,
-        "EW([OIII]) MAST": mast_EW_O_data,
-        "EW([OIII]) JADES": jades_EW_O_data
-        }
-
-    ID = ID_data[0]
-    EWD = pd.DataFrame(EW_data)
-    
-    #EWD.to_csv(f'{output_folder}/EW_output_{ID}.tsv', sep="\t", index=False)
-    
-    #Save spectrum with fitted continuum
-    save_spectrum(ID)
+    #print the EW data for a given object in short list with index numb
+    #numb = 13
+    #get_info(ID_array[numb])
 
 
+    #Save the EW computation for the objects in the list
+    for n in range(len(ID_array)):
+        
+        
+        try:
+            save_EW(n)
+
+        except FileNotFoundError:
+            print(f'File {MAST_files[n]} not found')
+            continue
+
+        except TypeError:
+            print(f'Unkown error for {ID_array[n]}')
+            continue
+
+        except IndexError:
+            print(f'Bad regions for {ID_array[n]}')
+
+        #Save data in data frame
+        EW_data = {
+            "ID": ID_data,
+            "redshift": z_data,
+            "EW(Ha) MAST": mast_EW_Ha_data,
+            "EW(Ha) JADES": jades_EW_Ha_data,
+            "EW(Hb) MAST": mast_EW_Hb_data,
+            "EW(Hb) JADES": jades_EW_Hb_data,
+            "EW([OIII]) MAST": mast_EW_O_data,
+            "EW([OIII]) JADES": jades_EW_O_data
+            }
+        
+        #Save spectrum with fitted continuum
+        ID = ID_array[n]
+        #save_spectrum(ID)
+
+    #Save the EW estimations in external file 
+    #EWD = pd.DataFrame(EW_data)
+    #EWD.to_csv(f'{output_folder}/EW_output_v4.tsv', sep="\t", index=False)
+        
+        
 
 #///////////////////////////////////////
 #       Functions                    ///
 #///////////////////////////////////////
-def compare_EW(mast_file, jades_file, z, printValue=False):
+def compute_EW(mast_file, jades_file, z, printValue=False):
 
 
     with fits.open(mast_file) as m_f:
@@ -106,12 +125,15 @@ def compare_EW(mast_file, jades_file, z, printValue=False):
         with warnings.catch_warnings(): #ignore warnings
             warnings.simplefilter('ignore')
 
-                #Initial region to exlude
+                #Regions to exlude
             lamb = lambda_rest_Angstrom
             Lower_lamb_region = SpectralRegion(lamb[0], lamb_ini)
+            Ha_region = SpectralRegion(6450 *u.AA, 6610 *u.AA)
+            Hb_region = SpectralRegion(4800 *u.AA, 5060 *u.AA)
             Last_lamb_region = SpectralRegion(lamb[-1] - lamb_end, lamb[-1])
+
                 #Compute continuum by fitting
-            spec_continuum_fitted = fit_generic_continuum(mast_spectrum, exclude_regions=[Lower_lamb_region, Last_lamb_region])(mast_spectrum.spectral_axis)
+            spec_continuum_fitted = fit_generic_continuum(mast_spectrum, exclude_regions=[Lower_lamb_region, Hb_region, Ha_region, Last_lamb_region])(mast_spectrum.spectral_axis)
                 # Normalize the spectrum by its continuum
             mast_normalized_continuum_spec = mast_spectrum / spec_continuum_fitted
 
@@ -148,11 +170,15 @@ def compare_EW(mast_file, jades_file, z, printValue=False):
         with warnings.catch_warnings(): #ignore warnings
             warnings.simplefilter('ignore')
 
+                #Regions to exclude
             lamb = lambda_rest_Angstrom
             Lower_lamb_region = SpectralRegion(lamb[0], lamb_ini)
+            Ha_region = SpectralRegion(6450 *u.AA, 6610 *u.AA)
+            Hb_region = SpectralRegion(4800 *u.AA, 5060 *u.AA)
             Last_lamb_region = SpectralRegion(lamb[-1] - lamb_end, lamb[-1])
-                #Compute continuum by fitting
-            spec_continuum_fitted = fit_generic_continuum(jades_spectrum, exclude_regions=[Lower_lamb_region, Last_lamb_region])(jades_spectrum.spectral_axis)
+
+            # Normalize the spectrum by its continuum
+            spec_continuum_fitted = fit_generic_continuum(jades_spectrum, exclude_regions=[Lower_lamb_region, Hb_region,Ha_region, Last_lamb_region] )(jades_spectrum.spectral_axis)
             jades_normalized_continuum_spec = jades_spectrum / spec_continuum_fitted
 
         #Define Spectral Regions for the emission lines
@@ -195,31 +221,11 @@ def get_info(ID):
             z = z_array[i]
 
             print(f'ID={ID}')
-            compare_EW(mast_file, jades_file, z, printValue=True)
+            compute_EW(mast_file, jades_file, z, printValue=True)
 
 
 
-def save_EW(i):
-
-    jades_file = jades_folder / JADES_files[i]
-    mast_file = mast_folder / MAST_files[i]
-    z = z_array[i]
-
-    ma_Ha, ma_Hb, ma_O, jd_Ha, jd_Hb, jd_O = compare_EW(mast_file, jades_file, z)
-
-    ID_data.append(ID_array[i])
-    z_data.append(z_array[i])
-    mast_EW_Ha_data.append(ma_Ha)
-    jades_EW_Ha_data.append(jd_Ha)
-    mast_EW_Hb_data.append(ma_Hb)
-    jades_EW_Hb_data.append(jd_Hb)
-    mast_EW_O_data.append(ma_O)
-    jades_EW_O_data.append(jd_O)
-
-
-
-
-def compare_spectrum(mast_file, jades_file, z, ID):
+def plot_spectrum(mast_file, jades_file, z, ID):
 
     with fits.open(mast_file) as m_f:
         #Extract data from the file
@@ -242,13 +248,14 @@ def compare_spectrum(mast_file, jades_file, z, ID):
             warnings.simplefilter('ignore')
 
             # Normalize the spectrum by its continuum
-            lamb=mast_lambda_rest_Angstrom
+                #Regions to exclude
+            lamb = mast_lambda_rest_Angstrom
             Lower_lamb_region = SpectralRegion(lamb[0], lamb_ini)
+            Ha_region = SpectralRegion(6450 *u.AA, 6610 *u.AA)
+            Hb_region = SpectralRegion(4800 *u.AA, 5060 *u.AA)
             Last_lamb_region = SpectralRegion(lamb[-1] - lamb_end, lamb[-1])
-            lines_regions = SpectralRegion(4740 * u.AA, 6780 * u.AA )
-            mast_spec_continuum_fitted = fit_generic_continuum(mast_spectrum, exclude_regions=[Lower_lamb_region, lines_regions, Last_lamb_region])(mast_spectrum.spectral_axis)
-            mast_normalized_continuum_spec = mast_spectrum / mast_spec_continuum_fitted
-
+            mast_spec_continuum_fitted = fit_generic_continuum(mast_spectrum, exclude_regions=[Lower_lamb_region, Hb_region, Ha_region, Last_lamb_region])(mast_spectrum.spectral_axis)
+            
 
 
     with fits.open(jades_file) as j_f:
@@ -269,34 +276,31 @@ def compare_spectrum(mast_file, jades_file, z, ID):
 
         with warnings.catch_warnings(): #ignore warnings
             warnings.simplefilter('ignore')
-
-            # Normalize the spectrum by its continuum
+            
+            #Regions to exclude
             lamb=jades_lambda_rest_Angstrom
             Lower_lamb_region = SpectralRegion(lamb[0], lamb_ini)
+            Ha_region = SpectralRegion(6450 *u.AA, 6610 *u.AA)
+            Hb_region = SpectralRegion(4800 *u.AA, 5060 *u.AA)
             Last_lamb_region = SpectralRegion(lamb[-1] - lamb_end, lamb[-1])
-            lines_regions = SpectralRegion(4740 * u.AA, 6780 * u.AA )
-            jades_spec_continuum_fitted = fit_generic_continuum(jades_spectrum, exclude_regions=[Lower_lamb_region, lines_regions, Last_lamb_region])(jades_spectrum.spectral_axis)
-            jades_normalized_continuum_spec = jades_spectrum / jades_spec_continuum_fitted
+        
+            jades_spec_continuum_fitted = fit_generic_continuum(jades_spectrum, exclude_regions=[Lower_lamb_region, Hb_region, Ha_region, Last_lamb_region])(jades_spectrum.spectral_axis)
+            
 
 
-
-    #Plot the spectrum
+    ## //// Plot the spectrum /////
     plt.figure()
 
 
 
-
-    ##plots
         #Both
     plt.rcParams["figure.figsize"] = (12, 9)
+
     plt.step(mast_spectrum.spectral_axis, mast_spectrum.flux, label='MAST', color='b')
     plt.step(jades_spectrum.spectral_axis, jades_spectrum.flux, label='JADES', color='g')
-
     plt.step(mast_lambda_rest_Angstrom, mast_spec_continuum_fitted, label='MAST NC', color='cyan')
     plt.step(jades_lambda_rest_Angstrom, jades_spec_continuum_fitted, label='JADES NC',  color='lightgreen')
 
-
-    #plt.step(normalized_continuum_spec.wavelength, normalized_continuum_spec.flux)
     plt.ylabel(r' Flux [ergs s$^{-1}$ cm$^{-2}$ $\AA^{-1}$]', fontsize=15)
     plt.xlabel(r' $\lambda_{rest}$ [$\AA$]', fontsize=15)
     plt.title(f'ID={ID}, z={z}',fontsize=14)
@@ -305,8 +309,9 @@ def compare_spectrum(mast_file, jades_file, z, ID):
     plt.tick_params(axis='x',labelsize=10)
     plt.tick_params(axis='y',labelsize=10)
     plt.savefig(f'{plots_folder}/EW-{ID}-B.pdf')
-    plt.close()
+    #plt.close()
     
+    """
         #Only JADES
     plt.rcParams["figure.figsize"] = (12, 9)
     
@@ -343,9 +348,9 @@ def compare_spectrum(mast_file, jades_file, z, ID):
     plt.tick_params(axis='x',labelsize=10)
     plt.tick_params(axis='y',labelsize=10)
     plt.savefig(f'{plots_folder}/EW-{ID}-M.pdf')
-    plt.show()
+    #plt.show()
     plt.close()
-    
+    """
 
 
 def save_spectrum(ID):
@@ -356,8 +361,29 @@ def save_spectrum(ID):
             jades_file = jades_folder / JADES_files[i]
             mast_file = mast_folder / MAST_files[i]
             z = z_array[i]
-            compare_spectrum(mast_file, jades_file, z, ID)
+            plot_spectrum(mast_file, jades_file, z, ID)
             
 
-main()
 
+
+def save_EW(i):
+
+    jades_file = jades_folder / JADES_files[i]
+    mast_file = mast_folder / MAST_files[i]
+    z = z_array[i]
+
+    ma_Ha, ma_Hb, ma_O, jd_Ha, jd_Hb, jd_O = compute_EW(mast_file, jades_file, z)
+
+    ID_data.append(ID_array[i])
+    z_data.append(z_array[i])
+    mast_EW_Ha_data.append(ma_Ha)
+    jades_EW_Ha_data.append(jd_Ha)
+    mast_EW_Hb_data.append(ma_Hb)
+    jades_EW_Hb_data.append(jd_Hb)
+    mast_EW_O_data.append(ma_O)
+    jades_EW_O_data.append(jd_O)
+
+
+
+#This line makes the magic
+main()

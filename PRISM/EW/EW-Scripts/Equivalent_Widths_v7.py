@@ -1,20 +1,18 @@
 """
-  This version implements uncertainties from the distribution of the spectrum itself around the lines
-  with the std deviation of the flux values, instead of extracting directly from the .fits file.
-  Another chane is the computation of the EW for each line with a single function.
-  Date: March 8th
+In this code the line regions are read from a file of previously written and measured values. 
+Those valus would apply only for this sample.
 """
+
+
 
 from specutils.fitting import fit_generic_continuum
 from specutils.analysis import equivalent_width
 from astropy.nddata import StdDevUncertainty
 from specutils import SpectralRegion
 from specutils import Spectrum
-import matplotlib.pyplot as plt
 from astropy import units as u
 from astropy.io import fits
 from pathlib import Path
-import seaborn as sns
 import pandas as pd
 import numpy as np
 import warnings
@@ -56,7 +54,7 @@ jades_EW_dO_data=[]
 
 def main():
   
-  for indx in range(3):
+  for indx in range(len(ID_array)):
     
 
     #Save EW estimate
@@ -81,11 +79,9 @@ def main():
       "EW([OIII]) unc JADES": jades_EW_dO_data
     }
 
-  #ID = ID_array[indx]
+  #Save the Data 
   EWD = pd.DataFrame(EW_data)
-  #folder=objects_folder / f'{ID}'
-  #EWD.to_csv(f'{folder}/EW_output_{ID}_2.tsv', sep="\t", index=False)
-  EWD.to_csv(f'{output_folder}/EW_output_v7.tsv', sep="\t", index=False, mode='a', header=False)
+  EWD.to_csv(f'{output_folder}/EW_output_v7_4.tsv', sep="\t", index=False, mode='a', header=True)
 
   
 
@@ -196,10 +192,10 @@ def compute_EWs(lambda_rest, flux, lines_lim):
 
   #  Regions to exlude
   lamb = lambda_rest_Angstrom
-  Ha_left = SpectralRegion(lamb[0], Ha_ini - 500 *u.AA)
+  Ha_left = SpectralRegion(lamb[0], Ha_ini - 1100 *u.AA)
   Ha_region = SpectralRegion(Ha_ini, Ha_end)
   Ha_region_excl = SpectralRegion(Ha_ini, Ha_end + 150 *u.AA )
-  Ha_right = SpectralRegion(Ha_end + 350 *u.AA, lamb[-1])
+  Ha_right = SpectralRegion(Ha_end + 450 *u.AA, lamb[-1])
   Ha_exclusion_regions = [Ha_left, Ha_region_excl, Ha_right]
 
   #// Compute EW of Ha //
