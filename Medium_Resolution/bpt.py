@@ -1,3 +1,8 @@
+""""
+First version of BPT diagram plotting code. This version uses the separated output files for G235M, G395M, 
+and the combined data. It also includes arrows for upper limits on [NII]6583 
+fluxes where the flux is less than the error.
+"""
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -212,5 +217,5 @@ def plot_bpt_combined(source='MAST', arrows=True, labels=False, save=False, show
 
 #====================================================================#
 #====================================================================#
-plot_bpt_combined(source='JADES', save=True, labels=False)
-plot_bpt_combined(source='MAST', save=True, labels=False)
+plot_bpt_combined(source='JADES', save=False, labels=False)
+plot_bpt_combined(source='MAST', save=False, labels=False)

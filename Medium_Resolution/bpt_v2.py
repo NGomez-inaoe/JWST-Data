@@ -1,3 +1,8 @@
+"""
+This version already implements the flux combined from a single file. Non starforming objects are not removed, here all are plotted
+JADES and MAST options can be chosen separately. The code also contains upper limits 
+"""
+
 
 import numpy as np
 import pandas as pd
@@ -54,7 +59,7 @@ plt.rc('font', size=16)          # controls default text sizes
 def compute_axes(source='MAST', filter='G235M', save=False, show=True):
     #================= File Reading =================#
     # Read the TSV file
-    df_all = pd.read_csv('./Output_data/Line_fluxes_all_filters.tsv', sep='\t')
+    df_all = pd.read_csv('./Output_data/LF_all_filters_last.tsv', sep='\t')
     equivalent_widths = pd.read_csv('./Equivalent_width_data.tsv', sep='\t')
 
     if source == 'MAST':
